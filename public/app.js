@@ -17,8 +17,8 @@ let purchasedCredits = 0;
 const FREE_LIMIT_ANONYMOUS = 5;
 const FREE_LIMIT_AUTHENTICATED = 10;
 const COOLDOWN_DAYS = 2; // Days until free generations reset
-const CREDIT_PACK_SIZE = 25;
-const CREDIT_PACK_PRICE = 2.99;
+const CREDIT_PACK_SIZE = 30;
+const CREDIT_PACK_PRICE = 7.95;
 
 // ===================
 // SUPABASE
@@ -290,9 +290,9 @@ async function checkPaymentStatus() {
     const payment = params.get('payment');
 
     if (payment === 'success') {
-        // Add credits to the user's account
-        await addCredits(CREDIT_PACK_SIZE);
-        showToast(`🎉 ${CREDIT_PACK_SIZE} credits added!`);
+        // Credits are added server-side via webhook - just reload balance
+        await loadCredits();
+        showToast(`🎉 Credits added to your account!`);
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
     } else if (payment === 'cancelled') {

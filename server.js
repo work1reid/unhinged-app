@@ -2,6 +2,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const Together = require('together-ai');
 const Stripe = require('stripe');
+const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
@@ -12,6 +13,12 @@ const PORT = process.env.PORT || 3000;
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Initialize Supabase Admin Client (for server-side operations)
+const supabaseAdmin = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // ===================
 // SECURITY MIDDLEWARE
@@ -94,10 +101,65 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
         const userId = session.metadata.userId;
-        const credits = parseInt(session.metadata.credits) || 25;
+        const credits = parseInt(session.metadata.credits) || 30;
+        const paymentId = session.payment_intent;
 
-        console.log(`💰 Payment successful! Adding ${credits} credits to user ${userId}`);
-        // Credits will be added by the client checking payment status
+        console.log(`💰 Payment received for user ${userId}, payment: ${paymentId}`);
+
+        try {
+            // Check if this payment was already processed (idempotency)
+            const { data: existingPayment } = await supabaseAdmin
+                .from('payments')
+                .select('id')
+                .eq('stripe_payment_id', paymentId)
+                .single();
+
+            if (existingPayment) {
+                console.log(`⚠️ Payment ${paymentId} already processed, skipping`);
+                return res.json({ received: true });
+            }
+
+            // Get current credits
+            const { data: currentCredits } = await supabaseAdmin
+                .from('credits')
+                .select('balance, total_purchased')
+                .eq('id', userId)
+                .single();
+
+            const currentBalance = currentCredits?.balance || 0;
+            const totalPurchased = currentCredits?.total_purchased || 0;
+
+            // Upsert credits
+            const { error: creditError } = await supabaseAdmin
+                .from('credits')
+                .upsert({
+                    id: userId,
+                    balance: currentBalance + credits,
+                    total_purchased: totalPurchased + credits,
+                    updated_at: new Date().toISOString()
+                });
+
+            if (creditError) {
+                console.error('❌ Failed to add credits:', creditError);
+                return res.status(500).json({ error: 'Failed to add credits' });
+            }
+
+            // Log payment for idempotency
+            await supabaseAdmin
+                .from('payments')
+                .insert({
+                    user_id: userId,
+                    stripe_payment_id: paymentId,
+                    amount: session.amount_total,
+                    credits: credits,
+                    created_at: new Date().toISOString()
+                });
+
+            console.log(`✅ Added ${credits} credits to user ${userId}. New balance: ${currentBalance + credits}`);
+        } catch (err) {
+            console.error('❌ Webhook processing error:', err);
+            return res.status(500).json({ error: 'Processing failed' });
+        }
     }
 
     res.json({ received: true });
@@ -208,8 +270,41 @@ async function callUncensoredAI(prompt) {
 // ===================
 
 // Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Track basic stats
+let serverStats = {
+    startTime: new Date(),
+    requestCount: 0,
+    errorCount: 0,
+    lastError: null
+};
+
+app.get('/api/health', async (req, res) => {
+    const uptime = Math.floor((new Date() - serverStats.startTime) / 1000);
+
+    // Check Supabase connection
+    let dbStatus = 'unknown';
+    try {
+        const { data, error } = await supabaseAdmin.from('credits').select('id').limit(1);
+        dbStatus = error ? 'error' : 'ok';
+    } catch (e) {
+        dbStatus = 'error';
+    }
+
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: `${uptime}s`,
+        requests: serverStats.requestCount,
+        errors: serverStats.errorCount,
+        lastError: serverStats.lastError,
+        database: dbStatus
+    });
+});
+
+// Middleware to track requests
+app.use((req, res, next) => {
+    serverStats.requestCount++;
+    next();
 });
 
 // Supabase config (public keys only)
@@ -641,11 +736,11 @@ app.post('/api/create-checkout', async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: '25 Generation Credits',
-                        description: 'Generate 25 more unhinged openers',
+                        name: '30 Generation Credits',
+                        description: 'Generate 30 more unhinged openers',
                         images: ['https://unhingedai.app/icon-192.png']
                     },
-                    unit_amount: 299 // $2.99 in cents
+                    unit_amount: 795 // $7.95 in cents
                 },
                 quantity: 1
             }],
@@ -655,7 +750,7 @@ app.post('/api/create-checkout', async (req, res) => {
             customer_email: email,
             metadata: {
                 userId: userId,
-                credits: '25'
+                credits: '30'
             }
         });
 
