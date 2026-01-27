@@ -348,7 +348,8 @@ async function cancelSubscription() {
         if (data.success) {
             currentSubscription = null;
             showToast('Subscription cancelled');
-            updateSettingsUI();
+            await updateSettingsUI();
+            await updateStats();
         } else {
             showToast(data.error || 'Failed to cancel');
         }
