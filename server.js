@@ -721,14 +721,33 @@ Return ONLY the JSON, no other text.`;
 // STRIPE PAYMENT ROUTES
 // ===================
 
+// Credit pack options
+const CREDIT_PACKS = {
+    starter: {
+        name: '5 Generation Credits',
+        description: 'Quick top-up for a few more openers',
+        credits: 5,
+        price: 200 // $2.00 in cents
+    },
+    value: {
+        name: '30 Generation Credits',
+        description: 'Best value - save 33% per credit!',
+        credits: 30,
+        price: 799 // $7.99 in cents
+    }
+};
+
 // Create Stripe checkout session
 app.post('/api/create-checkout', async (req, res) => {
     try {
-        const { userId, email } = req.body;
+        const { userId, email, pack } = req.body;
 
         if (!userId) {
             return res.status(400).json({ error: 'User must be logged in to purchase credits' });
         }
+
+        // Get pack details (default to value pack)
+        const selectedPack = CREDIT_PACKS[pack] || CREDIT_PACKS.value;
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
@@ -736,11 +755,11 @@ app.post('/api/create-checkout', async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: '30 Generation Credits',
-                        description: 'Generate 30 more unhinged openers',
+                        name: selectedPack.name,
+                        description: selectedPack.description,
                         images: ['https://unhingedai.app/icon-192.png']
                     },
-                    unit_amount: 795 // $7.95 in cents
+                    unit_amount: selectedPack.price
                 },
                 quantity: 1
             }],
@@ -750,7 +769,7 @@ app.post('/api/create-checkout', async (req, res) => {
             customer_email: email,
             metadata: {
                 userId: userId,
-                credits: '30'
+                credits: String(selectedPack.credits)
             }
         });
 

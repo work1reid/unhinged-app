@@ -254,7 +254,7 @@ async function useCredit() {
     return false;
 }
 
-async function buyCredits() {
+async function buyCredits(pack = 'value') {
     if (!currentUser) {
         showToast('Sign in to buy credits');
         showLogin();
@@ -267,7 +267,8 @@ async function buyCredits() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 userId: currentUser.id,
-                email: currentUser.email
+                email: currentUser.email,
+                pack: pack
             })
         });
 
@@ -487,7 +488,7 @@ async function updateStats() {
 
 async function updateGenerateUsage() {
     const el = document.getElementById('generate-usage');
-    const buyBtn = document.getElementById('buy-credits-btn');
+    const packsSection = document.getElementById('buy-credits-section');
 
     if (el) {
         const freeRemaining = await getRemainingFreeGenerations();
@@ -506,10 +507,10 @@ async function updateGenerateUsage() {
         }
     }
 
-    // Show/hide buy credits button
-    if (buyBtn) {
+    // Show/hide buy credits section when running low
+    if (packsSection) {
         const freeRemaining = await getRemainingFreeGenerations();
-        buyBtn.style.display = (freeRemaining <= 2 && currentUser) ? 'block' : 'none';
+        packsSection.style.display = (freeRemaining <= 3 && currentUser) ? 'block' : 'none';
     }
 }
 
@@ -519,7 +520,7 @@ function updateSettingsUI() {
     const usernameSection = document.getElementById('username-section');
     const signoutBtn = document.getElementById('settings-signout-btn');
     const signinBtn = document.getElementById('settings-signin-btn');
-    const buyCreditsBtn = document.getElementById('settings-buy-credits-btn');
+    const settingsPacks = document.getElementById('settings-packs');
     const creditsInfo = document.getElementById('settings-credits-info');
     const creditsValue = document.getElementById('settings-credits-value');
 
@@ -529,7 +530,7 @@ function updateSettingsUI() {
         usernameSection.style.display = 'block';
         signoutBtn.style.display = 'block';
         signinBtn.style.display = 'none';
-        buyCreditsBtn.style.display = 'block';
+        settingsPacks.style.display = 'block';
         creditsInfo.style.display = 'flex';
         creditsValue.textContent = purchasedCredits;
     } else {
@@ -537,7 +538,7 @@ function updateSettingsUI() {
         usernameSection.style.display = 'none';
         signoutBtn.style.display = 'none';
         signinBtn.style.display = 'block';
-        buyCreditsBtn.style.display = 'none';
+        settingsPacks.style.display = 'none';
         creditsInfo.style.display = 'none';
     }
 }

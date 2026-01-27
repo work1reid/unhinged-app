@@ -282,9 +282,23 @@
                     Generate Openers 🔥
                 </button>
 
-                <button class="btn-credits" id="buy-credits-btn" onclick="buyCredits()" style="display: none;">
-                    💳 Get 30 Credits for $7.95
-                </button>
+                <div class="credit-packs" id="buy-credits-section" style="display: none;">
+                    <p class="packs-title">Need more credits?</p>
+                    <div class="pack-options">
+                        <button class="pack-btn pack-starter" onclick="buyCredits('starter')">
+                            <span class="pack-credits">5</span>
+                            <span class="pack-label">credits</span>
+                            <span class="pack-price">$2</span>
+                        </button>
+                        <button class="pack-btn pack-value" onclick="buyCredits('value')">
+                            <span class="pack-badge">BEST VALUE</span>
+                            <span class="pack-credits">30</span>
+                            <span class="pack-label">credits</span>
+                            <span class="pack-price">$7.99</span>
+                            <span class="pack-savings">Save 33%</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -491,14 +505,29 @@
                         Sign In for More
                     </button>
 
-                    <button class="btn-credits btn-full" id="settings-buy-credits-btn" onclick="buyCredits()" style="display: none;">
-                        💳 Buy 30 Credits - $7.95
-                    </button>
                 </div>
 
                 <div class="credits-info" id="settings-credits-info" style="display: none;">
                     <span class="credits-label">Your Credits:</span>
                     <span class="credits-value" id="settings-credits-value">0</span>
+                </div>
+
+                <div class="settings-packs" id="settings-packs" style="display: none;">
+                    <p class="packs-title">Buy More Credits</p>
+                    <div class="pack-options">
+                        <button class="pack-btn pack-starter" onclick="buyCredits('starter')">
+                            <span class="pack-credits">5</span>
+                            <span class="pack-label">credits</span>
+                            <span class="pack-price">$2</span>
+                        </button>
+                        <button class="pack-btn pack-value" onclick="buyCredits('value')">
+                            <span class="pack-badge">BEST VALUE</span>
+                            <span class="pack-credits">30</span>
+                            <span class="pack-label">credits</span>
+                            <span class="pack-price">$7.99</span>
+                            <span class="pack-savings">Save 33%</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="settings-links">

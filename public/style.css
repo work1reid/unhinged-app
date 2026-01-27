@@ -1324,6 +1324,106 @@ body {
     box-shadow: 0 2px 8px rgba(46, 204, 113, 0.5);
 }
 
+/* Credit Packs */
+.credit-packs,
+.settings-packs {
+    margin-top: 20px;
+}
+
+.packs-title {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.pack-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.pack-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px;
+    border-radius: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(160deg, rgba(26,26,46,0.8) 0%, rgba(22,33,62,0.6) 100%);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pack-btn:active {
+    transform: scale(0.97);
+}
+
+.pack-starter {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.pack-starter:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: linear-gradient(160deg, rgba(46,46,76,0.8) 0%, rgba(32,43,72,0.6) 100%);
+}
+
+.pack-value {
+    border-color: rgba(46, 204, 113, 0.4);
+    background: linear-gradient(160deg, rgba(46,204,113,0.15) 0%, rgba(39,174,96,0.1) 100%);
+}
+
+.pack-value:hover {
+    border-color: rgba(46, 204, 113, 0.6);
+    box-shadow: 0 4px 20px rgba(46, 204, 113, 0.2);
+}
+
+.pack-badge {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    color: white;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 4px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+
+.pack-credits {
+    font-size: 32px;
+    font-weight: 800;
+    color: white;
+    line-height: 1;
+}
+
+.pack-value .pack-credits {
+    color: #2ecc71;
+}
+
+.pack-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 2px;
+}
+
+.pack-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    margin-top: 8px;
+}
+
+.pack-savings {
+    font-size: 11px;
+    color: #2ecc71;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
 /* Analysis Screen */
 .analysis-content {
     flex: 1;
