@@ -864,32 +864,59 @@ body {
 
 /* Feedback */
 .feedback-section {
-    margin-bottom: 12px;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(254, 202, 87, 0.05) 100%);
+    border: 1px solid rgba(255, 107, 107, 0.2);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
     text-align: center;
 }
 
+.feedback-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.feedback-icon {
+    font-size: 20px;
+}
+
 .feedback-prompt {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.feedback-hint {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.5);
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .feedback-buttons {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
 }
 
 .feedback-btn {
-    background: linear-gradient(160deg, rgba(26,26,46,0.8) 0%, rgba(22,33,62,0.6) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: white;
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-size: 11px;
+    padding: 10px 6px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    min-height: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
 }
 
 .feedback-btn:active {
@@ -897,9 +924,21 @@ body {
 }
 
 .feedback-btn.selected {
-    background: linear-gradient(135deg, rgba(255,107,107,0.25) 0%, rgba(254,202,87,0.15) 100%);
+    background: linear-gradient(135deg, rgba(255,107,107,0.3) 0%, rgba(254,202,87,0.2) 100%);
     border-color: #ff6b6b;
-    box-shadow: 0 4px 16px rgba(255, 107, 107, 0.2);
+    box-shadow: 0 4px 16px rgba(255, 107, 107, 0.3);
+}
+
+.feedback-btn.success {
+    border-color: rgba(46, 204, 113, 0.3);
+}
+
+.feedback-btn.fire {
+    border-color: rgba(255, 107, 107, 0.3);
+}
+
+.feedback-btn.fail {
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .results-actions {
