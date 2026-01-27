@@ -14,7 +14,7 @@ let purchasedCredits = 0;
 // ===================
 // CONSTANTS
 // ===================
-const FREE_LIMIT_ANONYMOUS = 5;
+const FREE_LIMIT_ANONYMOUS = 3;
 const FREE_LIMIT_AUTHENTICATED = 10;
 const COOLDOWN_DAYS = 2; // Days until free generations reset
 const CREDIT_PACK_SIZE = 30;
