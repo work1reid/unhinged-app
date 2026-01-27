@@ -483,12 +483,6 @@ async function updateStats() {
 
     document.getElementById('stat-remaining').textContent = totalRemaining;
     document.getElementById('stat-total').textContent = total;
-
-    // Show credits count if user has any
-    const creditsEl = document.getElementById('stat-credits');
-    if (creditsEl) {
-        creditsEl.textContent = purchasedCredits;
-    }
 }
 
 async function updateGenerateUsage() {

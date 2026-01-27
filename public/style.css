@@ -336,6 +336,10 @@ body {
     margin-bottom: 28px;
 }
 
+.home-stats.two-stats {
+    grid-template-columns: repeat(2, 1fr);
+}
+
 .stat-card {
     background: linear-gradient(160deg, rgba(255,107,107,0.1) 0%, rgba(254,202,87,0.05) 100%);
     border: 1px solid rgba(255, 107, 107, 0.2);
