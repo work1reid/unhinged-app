@@ -1148,6 +1148,11 @@ body {
     position: relative;
     text-align: left;
     padding: 24px 20px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.settings-modal-content * {
+    font-family: inherit;
 }
 
 /* Profile Header */
@@ -1161,14 +1166,14 @@ body {
 }
 
 .profile-avatar {
-    width: 56px;
-    height: 56px;
+    width: 50px;
+    height: 50px;
     background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
-    border-radius: 16px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 24px;
 }
 
 .profile-info {
@@ -1179,8 +1184,7 @@ body {
 }
 
 .profile-email {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: white;
 }
@@ -1197,7 +1201,8 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: white;
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 400;
     outline: none;
 }
 
@@ -1214,6 +1219,7 @@ body {
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 600;
 }
 
 /* Settings Cards */
@@ -1221,7 +1227,7 @@ body {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 14px;
-    padding: 16px;
+    padding: 14px 16px;
     margin-bottom: 12px;
 }
 
@@ -1232,31 +1238,27 @@ body {
 }
 
 .card-label {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 15px;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.9);
 }
 
 .card-value {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     color: #2ecc71;
 }
 
 .card-title {
     display: block;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: white;
     margin-bottom: 10px;
 }
 
 .card-desc {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
     color: rgba(255, 255, 255, 0.5);
     margin-bottom: 12px;
@@ -1274,7 +1276,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 14px 10px;
+    padding: 16px 10px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
@@ -1296,17 +1298,18 @@ body {
     top: -8px;
     background: #2ecc71;
     color: white;
-    font-size: 9px;
-    font-weight: 700;
+    font-size: 10px;
+    font-weight: 600;
     padding: 3px 8px;
     border-radius: 4px;
+    letter-spacing: 0.5px;
 }
 
 .pack-amt {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 700;
     color: white;
+    line-height: 1;
 }
 
 .pack-best .pack-amt {
@@ -1314,11 +1317,10 @@ body {
 }
 
 .pack-cost {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.5);
-    margin-top: 2px;
+    margin-top: 4px;
 }
 
 /* Referral */
@@ -1335,7 +1337,8 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: rgba(255, 255, 255, 0.7);
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 400;
     outline: none;
 }
 
@@ -1345,7 +1348,7 @@ body {
     border: none;
     border-radius: 8px;
     color: white;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
 }
@@ -1363,9 +1366,10 @@ body {
 }
 
 .referral-stats {
-    font-size: 11px;
-    color: rgba(155, 89, 182, 0.8);
-    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 10px;
     text-align: center;
 }
 
@@ -1423,7 +1427,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
     color: rgba(255, 255, 255, 0.7);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     margin-top: 8px;
