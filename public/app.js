@@ -57,6 +57,7 @@ async function initSupabase() {
                 await loadUsername();
                 await loadCredits();
                 await migrateLocalHistoryToCloud();
+                await processReferralOnSignup();
                 showHome();
                 showToast('Signed in!');
             } else if (event === 'SIGNED_OUT') {
@@ -260,6 +261,379 @@ async function buyCredits(pack = 'value') {
     }
 }
 
+// ===================
+// REFERRAL SYSTEM
+// ===================
+function getReferralCode() {
+    if (!currentUser) return null;
+    // Generate short code from user ID
+    return currentUser.id.substring(0, 8).toUpperCase();
+}
+
+function getReferralLink() {
+    const code = getReferralCode();
+    if (!code) return null;
+    return `https://unhingedai.app/?ref=${code}`;
+}
+
+async function checkReferral() {
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+
+    if (refCode) {
+        // Store referral code for later (when user signs up)
+        localStorage.setItem('referral_code', refCode);
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+async function processReferralOnSignup() {
+    if (!currentUser || !supabaseClient) return;
+
+    const refCode = localStorage.getItem('referral_code');
+    if (!refCode) return;
+
+    try {
+        // Find referrer by code (first 8 chars of their user ID)
+        const { data: users } = await supabaseClient
+            .from('profiles')
+            .select('id')
+            .ilike('id', `${refCode.toLowerCase()}%`);
+
+        if (users && users.length > 0) {
+            const referrerId = users[0].id;
+
+            // Don't self-refer
+            if (referrerId === currentUser.id) {
+                localStorage.removeItem('referral_code');
+                return;
+            }
+
+            // Check if already referred
+            const { data: existing } = await supabaseClient
+                .from('referrals')
+                .select('id')
+                .eq('referred_id', currentUser.id)
+                .single();
+
+            if (existing) {
+                localStorage.removeItem('referral_code');
+                return;
+            }
+
+            // Record referral
+            await supabaseClient.from('referrals').insert({
+                referrer_id: referrerId,
+                referred_id: currentUser.id
+            });
+
+            // Award credits to referrer (3 credits)
+            const { data: referrerCredits } = await supabaseClient
+                .from('credits')
+                .select('balance')
+                .eq('id', referrerId)
+                .single();
+
+            await supabaseClient.from('credits').upsert({
+                id: referrerId,
+                balance: (referrerCredits?.balance || 0) + 3,
+                updated_at: new Date().toISOString()
+            });
+
+            // Award credits to new user (3 credits)
+            await addCredits(3);
+
+            showToast('🎉 You got 3 bonus credits!');
+            console.log('Referral processed');
+        }
+
+        localStorage.removeItem('referral_code');
+    } catch (e) {
+        console.error('Referral processing failed:', e);
+    }
+}
+
+async function copyReferralLink() {
+    const link = getReferralLink();
+    if (!link) {
+        showToast('Sign in to get your referral link');
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(link);
+        showToast('Referral link copied!');
+    } catch (e) {
+        showToast('Failed to copy');
+    }
+}
+
+async function shareReferral() {
+    const link = getReferralLink();
+    if (!link) {
+        showToast('Sign in to share');
+        return;
+    }
+
+    const text = `Get unhinged dating openers with AI! Use my link for 3 free credits: ${link}`;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: 'Unhinged AI', text });
+            return;
+        } catch {}
+    }
+
+    await copyReferralLink();
+}
+
+// ===================
+// PUSH NOTIFICATIONS
+// ===================
+let notificationsEnabled = false;
+
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        showToast('Notifications not supported');
+        return false;
+    }
+
+    if (Notification.permission === 'granted') {
+        notificationsEnabled = true;
+        return true;
+    }
+
+    if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        notificationsEnabled = permission === 'granted';
+        if (notificationsEnabled) {
+            localStorage.setItem('notifications_enabled', 'true');
+            showToast('Notifications enabled!');
+            scheduleReminder();
+        }
+        return notificationsEnabled;
+    }
+
+    return false;
+}
+
+function toggleNotifications() {
+    const toggle = document.getElementById('notifications-toggle');
+    if (toggle.checked) {
+        requestNotificationPermission();
+    } else {
+        notificationsEnabled = false;
+        localStorage.setItem('notifications_enabled', 'false');
+        showToast('Notifications disabled');
+    }
+}
+
+function scheduleReminder() {
+    // Store timestamp of last activity
+    localStorage.setItem('last_activity', Date.now().toString());
+}
+
+function checkForReminder() {
+    if (!notificationsEnabled) return;
+
+    const lastActivity = parseInt(localStorage.getItem('last_activity') || '0');
+    const hoursSince = (Date.now() - lastActivity) / (1000 * 60 * 60);
+
+    // Send reminder after 24 hours of inactivity
+    if (hoursSince >= 24 && Notification.permission === 'granted') {
+        const lastReminder = parseInt(localStorage.getItem('last_reminder') || '0');
+        const hoursSinceReminder = (Date.now() - lastReminder) / (1000 * 60 * 60);
+
+        // Only remind once per day
+        if (hoursSinceReminder >= 24) {
+            sendNotification(
+                'Time for some rizz? 🔥',
+                'Your matches are waiting. Generate some unhinged openers!'
+            );
+            localStorage.setItem('last_reminder', Date.now().toString());
+        }
+    }
+}
+
+function sendNotification(title, body) {
+    if (Notification.permission !== 'granted') return;
+
+    try {
+        new Notification(title, {
+            body,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'unhinged-reminder'
+        });
+    } catch (e) {
+        console.log('Notification failed:', e);
+    }
+}
+
+function initNotifications() {
+    notificationsEnabled = localStorage.getItem('notifications_enabled') === 'true';
+
+    if (notificationsEnabled && Notification.permission === 'granted') {
+        checkForReminder();
+    }
+
+    // Update activity timestamp
+    scheduleReminder();
+}
+
+// ===================
+// ANALYTICS DASHBOARD
+// ===================
+async function showAnalytics() {
+    if (!currentUser) {
+        showToast('Sign in to see analytics');
+        return;
+    }
+
+    const modal = document.getElementById('analytics-modal');
+    modal.classList.remove('hidden');
+
+    await loadAnalytics();
+}
+
+function closeAnalytics() {
+    document.getElementById('analytics-modal').classList.add('hidden');
+}
+
+async function loadAnalytics() {
+    const container = document.getElementById('analytics-content');
+    container.innerHTML = '<div class="analytics-loading">Loading stats...</div>';
+
+    if (!currentUser || !supabaseClient) {
+        container.innerHTML = '<p>Sign in to see analytics</p>';
+        return;
+    }
+
+    try {
+        // Get all generations with feedback
+        const { data: generations } = await supabaseClient
+            .from('generations')
+            .select('mode, feedback, created_at')
+            .eq('user_id', currentUser.id);
+
+        if (!generations || generations.length === 0) {
+            container.innerHTML = `
+                <div class="analytics-empty">
+                    <span>📊</span>
+                    <p>No data yet</p>
+                    <span class="hint">Generate some openers to see analytics</span>
+                </div>
+            `;
+            return;
+        }
+
+        // Calculate mode stats
+        const modeStats = {};
+        const modes = ['chaotic', 'flirty', 'unhinged', 'mysterious', 'dadjoke', 'poetic'];
+
+        modes.forEach(mode => {
+            modeStats[mode] = { total: 0, replied: 0, date: 0, blocked: 0 };
+        });
+
+        generations.forEach(gen => {
+            const mode = gen.mode || 'chaotic';
+            if (modeStats[mode]) {
+                modeStats[mode].total++;
+                if (gen.feedback === 'replied') modeStats[mode].replied++;
+                if (gen.feedback === 'date') modeStats[mode].date++;
+                if (gen.feedback === 'blocked') modeStats[mode].blocked++;
+            }
+        });
+
+        // Calculate success rates
+        const modeResults = modes.map(mode => {
+            const stats = modeStats[mode];
+            const withFeedback = stats.replied + stats.date + stats.blocked;
+            const successRate = withFeedback > 0
+                ? Math.round(((stats.replied + stats.date) / withFeedback) * 100)
+                : null;
+            return { mode, ...stats, successRate };
+        }).filter(m => m.total > 0)
+          .sort((a, b) => (b.successRate || 0) - (a.successRate || 0));
+
+        // Get best mode
+        const bestMode = modeResults.find(m => m.successRate !== null);
+
+        // Calculate overall stats
+        const totalGenerations = generations.length;
+        const withFeedback = generations.filter(g => g.feedback).length;
+        const successes = generations.filter(g => g.feedback === 'replied' || g.feedback === 'date').length;
+        const overallSuccess = withFeedback > 0 ? Math.round((successes / withFeedback) * 100) : 0;
+
+        // Mode emoji map
+        const modeEmoji = {
+            chaotic: '🌀',
+            flirty: '😏',
+            unhinged: '🔥',
+            mysterious: '🎭',
+            dadjoke: '👴',
+            poetic: '🎨'
+        };
+
+        // Build HTML
+        let html = `
+            <div class="analytics-overview">
+                <div class="analytics-stat">
+                    <span class="stat-value">${totalGenerations}</span>
+                    <span class="stat-label">Total Openers</span>
+                </div>
+                <div class="analytics-stat">
+                    <span class="stat-value">${overallSuccess}%</span>
+                    <span class="stat-label">Success Rate</span>
+                </div>
+                <div class="analytics-stat highlight">
+                    <span class="stat-value">${bestMode ? modeEmoji[bestMode.mode] : '—'}</span>
+                    <span class="stat-label">Best Mode</span>
+                </div>
+            </div>
+
+            <div class="analytics-section">
+                <h3>📊 Mode Performance</h3>
+                <div class="mode-performance">
+        `;
+
+        modeResults.forEach(m => {
+            const emoji = modeEmoji[m.mode] || '🔥';
+            const barWidth = m.successRate !== null ? m.successRate : 0;
+            const rateText = m.successRate !== null ? `${m.successRate}%` : 'No feedback';
+
+            html += `
+                <div class="mode-row">
+                    <span class="mode-name">${emoji} ${m.mode.charAt(0).toUpperCase() + m.mode.slice(1)}</span>
+                    <div class="mode-bar-container">
+                        <div class="mode-bar" style="width: ${barWidth}%"></div>
+                    </div>
+                    <span class="mode-rate">${rateText}</span>
+                    <span class="mode-count">(${m.total})</span>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+
+            <div class="analytics-tip">
+                ${bestMode && bestMode.successRate !== null
+                    ? `💡 <strong>${bestMode.mode.charAt(0).toUpperCase() + bestMode.mode.slice(1)}</strong> mode is working best for you!`
+                    : '💡 Record feedback on your openers to see which modes work best'}
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+    } catch (e) {
+        console.error('Analytics error:', e);
+        container.innerHTML = '<p>Failed to load analytics</p>';
+    }
+}
+
 // Check for payment success/cancel on page load
 async function checkPaymentStatus() {
     const params = new URLSearchParams(window.location.search);
@@ -411,6 +785,13 @@ function displayAnalysis() {
 
 function showSettings() {
     updateSettingsUI();
+
+    // Sync notifications toggle
+    const toggle = document.getElementById('notifications-toggle');
+    if (toggle) {
+        toggle.checked = notificationsEnabled && Notification.permission === 'granted';
+    }
+
     document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -440,10 +821,12 @@ async function updateStats() {
     const freeRemaining = await getRemainingFreeGenerations();
     const totalRemaining = freeRemaining + purchasedCredits;
     let total = getUsageData().total || 0;
+    let successRate = '—';
 
-    // If logged in, get total from cloud
+    // If logged in, get stats from cloud
     if (currentUser && supabaseClient) {
         try {
+            // Get total count
             const { count } = await supabaseClient
                 .from('generations')
                 .select('*', { count: 'exact', head: true })
@@ -452,13 +835,38 @@ async function updateStats() {
             if (count !== null) {
                 total = count;
             }
+
+            // Get success stats (replied + date = success)
+            const { data: feedbackData } = await supabaseClient
+                .from('generations')
+                .select('feedback')
+                .eq('user_id', currentUser.id)
+                .not('feedback', 'is', null);
+
+            if (feedbackData && feedbackData.length > 0) {
+                const successes = feedbackData.filter(f => f.feedback === 'replied' || f.feedback === 'date').length;
+                const rate = Math.round((successes / feedbackData.length) * 100);
+                successRate = `${rate}%`;
+            }
         } catch (e) {
             console.error('Stats fetch failed:', e);
+        }
+    } else {
+        // Use local stats for anonymous users
+        const data = getUsageData();
+        if (data.feedbackStats) {
+            const totalFeedback = Object.values(data.feedbackStats).reduce((a, b) => a + b, 0);
+            if (totalFeedback > 0) {
+                const successes = (data.feedbackStats.replied || 0) + (data.feedbackStats.date || 0);
+                const rate = Math.round((successes / totalFeedback) * 100);
+                successRate = `${rate}%`;
+            }
         }
     }
 
     document.getElementById('stat-remaining').textContent = totalRemaining;
     document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-success').textContent = successRate;
 }
 
 async function updateGenerateUsage() {
@@ -489,7 +897,7 @@ async function updateGenerateUsage() {
     }
 }
 
-function updateSettingsUI() {
+async function updateSettingsUI() {
     const emailEl = document.getElementById('settings-email');
     const usernameInput = document.getElementById('settings-username');
     const usernameSection = document.getElementById('username-section');
@@ -498,6 +906,9 @@ function updateSettingsUI() {
     const settingsPacks = document.getElementById('settings-packs');
     const creditsInfo = document.getElementById('settings-credits-info');
     const creditsValue = document.getElementById('settings-credits-value');
+    const referralSection = document.getElementById('settings-referral');
+    const referralLinkInput = document.getElementById('referral-link-input');
+    const referralStats = document.getElementById('referral-stats');
 
     if (currentUser) {
         emailEl.textContent = currentUser.email;
@@ -508,6 +919,18 @@ function updateSettingsUI() {
         settingsPacks.style.display = 'block';
         creditsInfo.style.display = 'flex';
         creditsValue.textContent = purchasedCredits;
+
+        // Show referral section
+        referralSection.style.display = 'block';
+        referralLinkInput.value = getReferralLink() || '';
+
+        // Get referral stats
+        const referralCount = await getReferralCount();
+        if (referralCount > 0) {
+            referralStats.textContent = `${referralCount} friend${referralCount > 1 ? 's' : ''} invited • ${referralCount * 3} credits earned`;
+        } else {
+            referralStats.textContent = '';
+        }
     } else {
         emailEl.textContent = 'Not signed in';
         usernameSection.style.display = 'none';
@@ -515,6 +938,23 @@ function updateSettingsUI() {
         signinBtn.style.display = 'block';
         settingsPacks.style.display = 'none';
         creditsInfo.style.display = 'none';
+        referralSection.style.display = 'none';
+    }
+}
+
+async function getReferralCount() {
+    if (!currentUser || !supabaseClient) return 0;
+
+    try {
+        const { count } = await supabaseClient
+            .from('referrals')
+            .select('*', { count: 'exact', head: true })
+            .eq('referrer_id', currentUser.id);
+
+        return count || 0;
+    } catch (e) {
+        console.error('Get referral count failed:', e);
+        return 0;
     }
 }
 
@@ -644,6 +1084,9 @@ async function consumeGeneration() {
         saveUsageData(data);
     }
 
+    // Update activity for notifications
+    scheduleReminder();
+
     await updateStats();
     await updateGenerateUsage();
 }
@@ -652,6 +1095,9 @@ async function consumeGeneration() {
 // HISTORY (Cloud Sync)
 // ===================
 async function saveToHistory(matchName, openers, mode, analysis = null) {
+    // Reset last generation ID
+    lastGenerationId = null;
+
     // Always save to localStorage as backup
     const data = getUsageData();
     if (!data.history) data.history = [];
@@ -672,14 +1118,22 @@ async function saveToHistory(matchName, openers, mode, analysis = null) {
     // If logged in, also save to Supabase
     if (currentUser && supabaseClient) {
         try {
-            await supabaseClient.from('generations').insert({
-                user_id: currentUser.id,
-                match_name: matchName,
-                openers: openers,
-                mode: mode,
-                analysis: analysis
-            });
-            console.log('Saved to cloud');
+            const { data: inserted, error } = await supabaseClient
+                .from('generations')
+                .insert({
+                    user_id: currentUser.id,
+                    match_name: matchName,
+                    openers: openers,
+                    mode: mode,
+                    analysis: analysis
+                })
+                .select('id')
+                .single();
+
+            if (!error && inserted) {
+                lastGenerationId = inserted.id;
+                console.log('Saved to cloud, ID:', lastGenerationId);
+            }
         } catch (error) {
             console.error('Cloud save failed:', error);
         }
@@ -1018,38 +1472,6 @@ async function shareConvoResults() {
     showToast('Copied!');
 }
 
-// ===================
-// AGE VERIFICATION
-// ===================
-function checkAgeVerification() {
-    if (localStorage.getItem('ageVerified') === 'true') {
-        document.getElementById('age-modal').classList.add('hidden');
-        return true;
-    }
-    document.getElementById('age-modal').classList.remove('hidden');
-    return false;
-}
-
-function verifyAge() {
-    const age = document.getElementById('age-confirm').checked;
-    const terms = document.getElementById('terms-confirm').checked;
-    const harassment = document.getElementById('harassment-confirm').checked;
-
-    if (!age || !terms || !harassment) {
-        alert('Please check all boxes');
-        return;
-    }
-
-    localStorage.setItem('ageVerified', 'true');
-    document.getElementById('age-modal').classList.add('hidden');
-
-    // Show login or home based on auth state
-    if (currentUser) {
-        showHome();
-    } else {
-        showLogin();
-    }
-}
 
 // ===================
 // FILE UPLOAD
@@ -1187,12 +1609,35 @@ function copyOpener(text, card) {
 // ===================
 // FEEDBACK & SHARE
 // ===================
-function recordFeedback(result) {
+let lastGenerationId = null;
+
+async function recordFeedback(result) {
     document.querySelectorAll('.feedback-btn').forEach(b => b.classList.remove('selected'));
     event.target.classList.add('selected');
 
-    const msgs = { sent: 'Good luck!', replied: 'Nice!', date: 'LEGEND!', blocked: 'Their loss' };
+    const msgs = { sent: 'Good luck!', replied: 'Nice! 🎉', date: 'LEGEND! 🔥', blocked: 'Their loss 💀' };
     showToast(msgs[result] || 'Noted');
+
+    // Save feedback to cloud if logged in
+    if (currentUser && supabaseClient && lastGenerationId) {
+        try {
+            await supabaseClient
+                .from('generations')
+                .update({ feedback: result, feedback_at: new Date().toISOString() })
+                .eq('id', lastGenerationId);
+            console.log('Feedback saved:', result);
+        } catch (e) {
+            console.error('Failed to save feedback:', e);
+        }
+    }
+
+    // Update local stats
+    const data = getUsageData();
+    if (!data.feedbackStats) data.feedbackStats = { sent: 0, replied: 0, date: 0, blocked: 0 };
+    data.feedbackStats[result] = (data.feedbackStats[result] || 0) + 1;
+    saveUsageData(data);
+
+    await updateStats();
 }
 
 async function shareResults() {
@@ -1258,12 +1703,6 @@ function showToast(msg) {
 // EVENT LISTENERS
 // ===================
 function setupListeners() {
-    // Age verification
-    document.getElementById('age-verify-btn')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        verifyAge();
-    });
-
     // Login
     document.getElementById('google-signin-btn')?.addEventListener('click', signInWithGoogle);
     document.getElementById('skip-login-btn')?.addEventListener('click', showHome);
@@ -1294,12 +1733,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Unhinged loaded');
     setupListeners();
 
+    // Check for referral code in URL first
+    checkReferral();
+
+    // Initialize notifications
+    initNotifications();
+
     await initSupabase();
 
     // Check for payment success/cancel
     await checkPaymentStatus();
-
-    if (!checkAgeVerification()) return;
 
     if (currentUser) {
         showHome();

@@ -37,42 +37,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Age Verification Modal -->
-        <div id="age-modal" class="modal">
-            <div class="modal-content">
-                <h1 class="modal-app-name">UNHINGED AI</h1>
-                <p class="modal-app-desc">AI-powered dating opener generator. Upload a dating profile screenshot and get personalized, creative conversation starters for Tinder, Hinge, Bumble and more.</p>
-                <span class="modal-icon">🔞</span>
-                <h2>Age Verification Required</h2>
-                <p>This app contains <strong>adult humor</strong> and is intended for users 18+ for entertainment purposes only.</p>
-
-                <div class="age-checkbox">
-                    <label>
-                        <input type="checkbox" id="age-confirm">
-                        <span>I confirm I am at least 18 years old</span>
-                    </label>
-                </div>
-
-                <div class="terms-checkbox">
-                    <label>
-                        <input type="checkbox" id="terms-confirm">
-                        <span>I agree to the <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></span>
-                    </label>
-                </div>
-
-                <div class="harassment-checkbox">
-                    <label>
-                        <input type="checkbox" id="harassment-confirm">
-                        <span>I will NOT use this to harass anyone</span>
-                    </label>
-                </div>
-
-                <button class="btn-primary" id="age-verify-btn">
-                    Enter Site
-                </button>
-            </div>
-        </div>
-
         <!-- Login Screen -->
         <div id="login-screen" class="screen">
             <div class="login-content">
@@ -93,6 +57,7 @@
                         </svg>
                         Continue with Google
                     </button>
+                    <p class="login-terms">By continuing, you agree to our <a href="/terms.html">Terms</a> & <a href="/privacy.html">Privacy Policy</a></p>
                 </div>
 
                 <button class="btn-skip" id="skip-login-btn">
@@ -129,14 +94,18 @@
                 </button>
             </div>
 
-            <div class="home-stats two-stats">
+            <div class="home-stats">
                 <div class="stat-card">
                     <span class="stat-number" id="stat-remaining">5</span>
-                    <span class="stat-label">Credits Left</span>
+                    <span class="stat-label">Credits</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-number" id="stat-total">0</span>
                     <span class="stat-label">Generated</span>
+                </div>
+                <div class="stat-card stat-success">
+                    <span class="stat-number" id="stat-success">—</span>
+                    <span class="stat-label">Success</span>
                 </div>
             </div>
 
@@ -173,6 +142,15 @@
                     <div class="nav-info">
                         <span class="nav-title">Conversation Coach</span>
                         <span class="nav-desc">Get help with your chat</span>
+                    </div>
+                    <span class="nav-arrow">›</span>
+                </button>
+
+                <button class="nav-card nav-analytics" onclick="showAnalytics()">
+                    <span class="nav-icon">📊</span>
+                    <div class="nav-info">
+                        <span class="nav-title">Analytics</span>
+                        <span class="nav-desc">See which modes work best</span>
                     </div>
                     <span class="nav-arrow">›</span>
                 </button>
@@ -494,6 +472,19 @@
                     <span class="credits-value" id="settings-credits-value">0</span>
                 </div>
 
+                <div class="settings-referral" id="settings-referral" style="display: none;">
+                    <p class="referral-title">🎁 Invite Friends</p>
+                    <p class="referral-desc">Get 3 free credits for each friend who signs up!</p>
+                    <div class="referral-link-box">
+                        <input type="text" id="referral-link-input" readonly>
+                        <button class="btn-copy" onclick="copyReferralLink()">Copy</button>
+                    </div>
+                    <button class="btn-share-referral" onclick="shareReferral()">
+                        📤 Share Invite Link
+                    </button>
+                    <p class="referral-stats" id="referral-stats"></p>
+                </div>
+
                 <div class="settings-packs" id="settings-packs" style="display: none;">
                     <p class="packs-title">Buy More Credits</p>
                     <div class="pack-options">
@@ -512,12 +503,36 @@
                     </div>
                 </div>
 
+                <div class="settings-notifications" id="settings-notifications">
+                    <div class="notification-row">
+                        <div class="notification-info">
+                            <span class="notification-label">🔔 Reminders</span>
+                            <span class="notification-desc">Get reminded to check your matches</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="notifications-toggle" onchange="toggleNotifications()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="settings-links">
                     <a href="/terms.html">Terms of Service</a>
                     <a href="/privacy.html">Privacy Policy</a>
                 </div>
 
                 <p class="settings-version">Unhinged v1.0</p>
+            </div>
+        </div>
+
+        <!-- Analytics Modal -->
+        <div id="analytics-modal" class="modal hidden">
+            <div class="modal-content analytics-modal-content">
+                <button class="close-modal-btn" onclick="closeAnalytics()">&times;</button>
+                <h2>📊 Your Analytics</h2>
+                <div class="analytics-content" id="analytics-content">
+                    <div class="analytics-loading">Loading...</div>
+                </div>
             </div>
         </div>
     </div>

@@ -156,6 +156,22 @@ body {
     background: #f0f0f0;
 }
 
+.login-terms {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    margin-top: 12px;
+}
+
+.login-terms a {
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+}
+
+.login-terms a:hover {
+    text-decoration: underline;
+}
+
 .auth-divider {
     display: flex;
     align-items: center;
@@ -1231,6 +1247,86 @@ body {
     color: #2ecc71;
 }
 
+/* Referral Section */
+.settings-referral {
+    margin-top: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(155, 89, 182, 0.15) 0%, rgba(142, 68, 173, 0.1) 100%);
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    border-radius: 14px;
+}
+
+.referral-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 6px;
+}
+
+.referral-desc {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 12px;
+}
+
+.referral-link-box {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.referral-link-box input {
+    flex: 1;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+    outline: none;
+}
+
+.btn-copy {
+    padding: 10px 14px;
+    background: rgba(155, 89, 182, 0.3);
+    border: 1px solid rgba(155, 89, 182, 0.4);
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-copy:active {
+    transform: scale(0.95);
+    background: rgba(155, 89, 182, 0.5);
+}
+
+.btn-share-referral {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-share-referral:active {
+    transform: scale(0.97);
+}
+
+.referral-stats {
+    font-size: 12px;
+    color: rgba(155, 89, 182, 0.9);
+    margin-top: 10px;
+    text-align: center;
+}
+
 .settings-links {
     display: flex;
     flex-direction: column;
@@ -1835,6 +1931,232 @@ body {
 
 .convo-actions button {
     flex: 1;
+}
+
+/* ===================
+   NOTIFICATIONS TOGGLE
+   =================== */
+
+.settings-notifications {
+    margin-top: 20px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+
+.notification-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notification-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.notification-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+}
+
+.notification-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 28px;
+    transition: 0.3s;
+}
+
+.toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+input:checked + .toggle-slider {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+}
+
+input:checked + .toggle-slider::before {
+    transform: translateX(22px);
+}
+
+/* ===================
+   ANALYTICS MODAL
+   =================== */
+
+.analytics-modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.analytics-modal-content h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.analytics-loading {
+    text-align: center;
+    padding: 40px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.analytics-empty {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.analytics-empty span:first-child {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.analytics-empty p {
+    font-size: 16px;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.analytics-empty .hint {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.analytics-overview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.analytics-stat {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px 12px;
+    text-align: center;
+}
+
+.analytics-stat.highlight {
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(238, 90, 36, 0.1) 100%);
+    border-color: rgba(255, 107, 107, 0.3);
+}
+
+.analytics-stat .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: white;
+    line-height: 1.2;
+}
+
+.analytics-stat .stat-label {
+    display: block;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+}
+
+.analytics-section {
+    margin-bottom: 20px;
+}
+
+.analytics-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 12px;
+}
+
+.mode-performance {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mode-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 45px 40px;
+    align-items: center;
+    gap: 10px;
+}
+
+.mode-row .mode-name {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.mode-bar-container {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.mode-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b6b 0%, #2ecc71 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.mode-row .mode-rate {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2ecc71;
+    text-align: right;
+}
+
+.mode-row .mode-count {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: right;
+}
+
+.analytics-tip {
+    background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(41, 128, 185, 0.1) 100%);
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.analytics-tip strong {
+    color: #3498db;
 }
 
 /* ===================
