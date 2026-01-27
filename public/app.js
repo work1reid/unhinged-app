@@ -1004,27 +1004,54 @@ function renderFeedbackPrompt() {
             </div>
             <p class="feedback-prompt-preview">"${preview}"</p>
             <div class="feedback-prompt-buttons">
-                <button class="feedback-prompt-btn" onclick="submitPromptFeedback('${item.id}', 'sent')">📤 Sent</button>
-                <button class="feedback-prompt-btn success" onclick="submitPromptFeedback('${item.id}', 'replied')">💬 Reply</button>
-                <button class="feedback-prompt-btn fire" onclick="submitPromptFeedback('${item.id}', 'date')">🔥 Date</button>
-                <button class="feedback-prompt-btn fail" onclick="submitPromptFeedback('${item.id}', 'blocked')">💀 Blocked</button>
+                <button class="feedback-prompt-btn" data-result="sent">📤 Sent</button>
+                <button class="feedback-prompt-btn success" data-result="replied">💬 Reply</button>
+                <button class="feedback-prompt-btn fire" data-result="date">🔥 Date</button>
+                <button class="feedback-prompt-btn fail" data-result="blocked">💀 Blocked</button>
             </div>
-            <button class="feedback-skip-btn" onclick="skipCurrentFeedback()">Didn't use it</button>
+            <button class="feedback-skip-btn" id="skip-feedback-btn">Didn't use it</button>
         </div>
         <div class="feedback-prompt-progress">${currentFeedbackIndex + 1} of ${pendingFeedbackItems.length}</div>
     `;
+
+    // Add click handlers
+    container.querySelectorAll('.feedback-prompt-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            submitPromptFeedback(item.id, btn.dataset.result);
+        });
+    });
+
+    document.getElementById('skip-feedback-btn')?.addEventListener('click', skipCurrentFeedback);
 }
 
 async function submitPromptFeedback(generationId, result) {
+    if (!supabaseClient || !generationId) {
+        console.error('Missing supabase client or generation ID');
+        currentFeedbackIndex++;
+        renderFeedbackPrompt();
+        return;
+    }
+
     try {
-        await supabaseClient
+        const { error } = await supabaseClient
             .from('generations')
             .update({ feedback: result, feedback_at: new Date().toISOString() })
             .eq('id', generationId);
 
-        showToast(result === 'date' ? '🔥 Nice!' : 'Saved!');
+        if (error) {
+            console.error('Feedback save error:', error);
+            showToast('Failed to save');
+        } else {
+            const msgs = { sent: 'Saved!', replied: '💬 Nice!', date: '🔥 Legend!', blocked: 'Noted 💀' };
+            showToast(msgs[result] || 'Saved!');
+
+            // Invalidate analytics cache and update stats
+            analyticsCache = null;
+            await updateStats();
+        }
     } catch (e) {
         console.error('Feedback save error:', e);
+        showToast('Failed to save');
     }
 
     currentFeedbackIndex++;
@@ -1040,13 +1067,15 @@ function closeFeedbackPrompt() {
     document.getElementById('feedback-prompt-modal').classList.add('hidden');
     pendingFeedbackItems = [];
     currentFeedbackIndex = 0;
+    // Invalidate cache so analytics reloads fresh
+    analyticsCache = null;
 }
 
-function skipFeedbackPrompt() {
+async function skipFeedbackPrompt() {
     closeFeedbackPrompt();
     const modal = document.getElementById('analytics-modal');
     modal.classList.remove('hidden');
-    loadAnalytics();
+    await loadAnalytics();
 }
 
 // Check for payment success/cancel on page load
