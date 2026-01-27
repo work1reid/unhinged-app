@@ -2167,6 +2167,28 @@ function setupListeners() {
             await saveUsername(username);
         }
     });
+
+    // Close modals when clicking outside (on backdrop)
+    const modals = [
+        { id: 'settings-modal', close: closeSettings },
+        { id: 'analytics-modal', close: closeAnalytics },
+        { id: 'credits-breakdown-modal', close: () => closeBreakdown('credits') },
+        { id: 'generated-breakdown-modal', close: () => closeBreakdown('generated') },
+        { id: 'success-breakdown-modal', close: () => closeBreakdown('success') },
+        { id: 'feedback-prompt-modal', close: closeFeedbackPrompt }
+    ];
+
+    modals.forEach(({ id, close }) => {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                // Only close if clicking directly on backdrop, not on content
+                if (e.target === modal) {
+                    close();
+                }
+            });
+        }
+    });
 }
 
 // ===================
