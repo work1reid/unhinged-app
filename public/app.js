@@ -10,6 +10,7 @@ let currentUser = null;
 let currentUsername = null;
 let history = [];
 let purchasedCredits = 0;
+let analyticsCache = null;
 
 // ===================
 // CONSTANTS
@@ -1615,8 +1616,8 @@ async function recordFeedback(result) {
     document.querySelectorAll('.feedback-btn').forEach(b => b.classList.remove('selected'));
     event.target.classList.add('selected');
 
-    const msgs = { sent: 'Good luck!', replied: 'Nice! 🎉', date: 'LEGEND! 🔥', blocked: 'Their loss 💀' };
-    showToast(msgs[result] || 'Noted');
+    const msgs = { sent: 'Good luck! 🤞', replied: 'Nice! 🎉', date: 'LEGEND! 🔥', blocked: 'Their loss 💀' };
+    showToast(msgs[result] || 'Saved!');
 
     // Save feedback to cloud if logged in
     if (currentUser && supabaseClient && lastGenerationId) {
@@ -1637,7 +1638,11 @@ async function recordFeedback(result) {
     data.feedbackStats[result] = (data.feedbackStats[result] || 0) + 1;
     saveUsageData(data);
 
+    // Update all stats across the app
     await updateStats();
+
+    // Invalidate analytics cache so next view is fresh
+    analyticsCache = null;
 }
 
 async function shareResults() {
