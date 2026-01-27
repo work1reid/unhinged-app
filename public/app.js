@@ -583,18 +583,6 @@ function initNotifications() {
 // ===================
 // ANALYTICS DASHBOARD
 // ===================
-async function showAnalytics() {
-    if (!currentUser) {
-        showToast('Sign in to see analytics');
-        return;
-    }
-
-    const modal = document.getElementById('analytics-modal');
-    modal.classList.remove('hidden');
-
-    await loadAnalytics();
-}
-
 function closeAnalytics() {
     document.getElementById('analytics-modal').classList.add('hidden');
 }
@@ -730,6 +718,335 @@ async function loadAnalytics() {
         console.error('Analytics error:', e);
         container.innerHTML = '<p>Failed to load analytics</p>';
     }
+}
+
+// ===================
+// STAT BREAKDOWNS
+// ===================
+
+function closeBreakdown(type) {
+    document.getElementById(`${type}-breakdown-modal`).classList.add('hidden');
+}
+
+async function showCreditsBreakdown() {
+    const modal = document.getElementById('credits-breakdown-modal');
+    const container = document.getElementById('credits-breakdown-content');
+    modal.classList.remove('hidden');
+
+    const freeRemaining = await getRemainingFreeGenerations();
+    const freeLimit = getFreeLimit();
+    const freeUsed = freeLimit - freeRemaining;
+
+    let subscriptionHtml = '';
+    if (currentSubscription) {
+        subscriptionHtml = `
+            <div class="breakdown-row">
+                <span class="breakdown-label">🔥 Weekly Pro</span>
+                <span class="breakdown-value active">Active</span>
+            </div>
+            <div class="breakdown-row sub">
+                <span class="breakdown-label">Next refresh</span>
+                <span class="breakdown-value">+25 credits/week</span>
+            </div>
+        `;
+    }
+
+    container.innerHTML = `
+        <div class="breakdown-section">
+            <div class="breakdown-row highlight">
+                <span class="breakdown-label">Total Available</span>
+                <span class="breakdown-value big">${freeRemaining + purchasedCredits}</span>
+            </div>
+        </div>
+        <div class="breakdown-section">
+            <div class="breakdown-row">
+                <span class="breakdown-label">🆓 Free Credits</span>
+                <span class="breakdown-value">${freeRemaining} / ${freeLimit}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">💰 Purchased Credits</span>
+                <span class="breakdown-value">${purchasedCredits}</span>
+            </div>
+            ${subscriptionHtml}
+        </div>
+        <div class="breakdown-hint">Free credits reset every 2 days</div>
+    `;
+}
+
+async function showGeneratedBreakdown() {
+    const modal = document.getElementById('generated-breakdown-modal');
+    const container = document.getElementById('generated-breakdown-content');
+    modal.classList.remove('hidden');
+    container.innerHTML = '<div class="analytics-loading">Loading...</div>';
+
+    if (!currentUser || !supabaseClient) {
+        container.innerHTML = '<p>Sign in to see breakdown</p>';
+        return;
+    }
+
+    try {
+        const { data: generations } = await supabaseClient
+            .from('generations')
+            .select('mode, created_at')
+            .eq('user_id', currentUser.id);
+
+        if (!generations || generations.length === 0) {
+            container.innerHTML = '<p class="breakdown-empty">No generations yet</p>';
+            return;
+        }
+
+        // Count by mode
+        const modeEmoji = {
+            chaotic: '🌀', flirty: '😏', unhinged: '🔥',
+            mysterious: '🎭', dadjoke: '👴', poetic: '🎨'
+        };
+        const modeCounts = {};
+        generations.forEach(g => {
+            const mode = g.mode || 'chaotic';
+            modeCounts[mode] = (modeCounts[mode] || 0) + 1;
+        });
+
+        // Count by time period
+        const now = new Date();
+        const today = generations.filter(g => {
+            const d = new Date(g.created_at);
+            return d.toDateString() === now.toDateString();
+        }).length;
+        const thisWeek = generations.filter(g => {
+            const d = new Date(g.created_at);
+            const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+            return d >= weekAgo;
+        }).length;
+
+        let modeHtml = Object.entries(modeCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([mode, count]) => `
+                <div class="breakdown-row">
+                    <span class="breakdown-label">${modeEmoji[mode] || '🔥'} ${mode.charAt(0).toUpperCase() + mode.slice(1)}</span>
+                    <span class="breakdown-value">${count}</span>
+                </div>
+            `).join('');
+
+        container.innerHTML = `
+            <div class="breakdown-section">
+                <div class="breakdown-row highlight">
+                    <span class="breakdown-label">Total Generated</span>
+                    <span class="breakdown-value big">${generations.length}</span>
+                </div>
+            </div>
+            <div class="breakdown-section">
+                <div class="breakdown-row">
+                    <span class="breakdown-label">📅 Today</span>
+                    <span class="breakdown-value">${today}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">📆 This Week</span>
+                    <span class="breakdown-value">${thisWeek}</span>
+                </div>
+            </div>
+            <div class="breakdown-section">
+                <span class="breakdown-title">By Mode</span>
+                ${modeHtml}
+            </div>
+        `;
+    } catch (e) {
+        console.error('Generated breakdown error:', e);
+        container.innerHTML = '<p>Failed to load</p>';
+    }
+}
+
+async function showSuccessBreakdown() {
+    const modal = document.getElementById('success-breakdown-modal');
+    const container = document.getElementById('success-breakdown-content');
+    modal.classList.remove('hidden');
+    container.innerHTML = '<div class="analytics-loading">Loading...</div>';
+
+    if (!currentUser || !supabaseClient) {
+        container.innerHTML = '<p>Sign in to see breakdown</p>';
+        return;
+    }
+
+    try {
+        const { data: generations } = await supabaseClient
+            .from('generations')
+            .select('feedback')
+            .eq('user_id', currentUser.id);
+
+        if (!generations || generations.length === 0) {
+            container.innerHTML = '<p class="breakdown-empty">No generations yet</p>';
+            return;
+        }
+
+        const total = generations.length;
+        const sent = generations.filter(g => g.feedback === 'sent').length;
+        const replied = generations.filter(g => g.feedback === 'replied').length;
+        const dates = generations.filter(g => g.feedback === 'date').length;
+        const blocked = generations.filter(g => g.feedback === 'blocked').length;
+        const noFeedback = generations.filter(g => !g.feedback).length;
+
+        const withFeedback = sent + replied + dates + blocked;
+        const successCount = replied + dates;
+        const successRate = withFeedback > 0 ? Math.round((successCount / withFeedback) * 100) : 0;
+
+        container.innerHTML = `
+            <div class="breakdown-section">
+                <div class="breakdown-row highlight">
+                    <span class="breakdown-label">Success Rate</span>
+                    <span class="breakdown-value big ${successRate >= 50 ? 'success' : ''}">${successRate}%</span>
+                </div>
+            </div>
+            <div class="breakdown-section">
+                <div class="breakdown-row">
+                    <span class="breakdown-label">📤 Sent</span>
+                    <span class="breakdown-value">${sent}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">💬 Got Reply</span>
+                    <span class="breakdown-value success">${replied}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">🔥 Got Date</span>
+                    <span class="breakdown-value success">${dates}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">💀 Blocked</span>
+                    <span class="breakdown-value fail">${blocked}</span>
+                </div>
+            </div>
+            <div class="breakdown-section">
+                <div class="breakdown-row">
+                    <span class="breakdown-label">❓ No feedback yet</span>
+                    <span class="breakdown-value muted">${noFeedback}</span>
+                </div>
+            </div>
+            ${noFeedback > 0 ? '<div class="breakdown-hint">Tap Analytics to update missing feedback</div>' : ''}
+        `;
+    } catch (e) {
+        console.error('Success breakdown error:', e);
+        container.innerHTML = '<p>Failed to load</p>';
+    }
+}
+
+// ===================
+// FEEDBACK PROMPT
+// ===================
+let pendingFeedbackItems = [];
+let currentFeedbackIndex = 0;
+
+async function showAnalytics() {
+    if (!currentUser) {
+        showToast('Sign in to see analytics');
+        return;
+    }
+
+    // Check for unanswered feedback first
+    const hasUnanswered = await checkUnansweredFeedback();
+    if (hasUnanswered) {
+        showFeedbackPrompt();
+    } else {
+        const modal = document.getElementById('analytics-modal');
+        modal.classList.remove('hidden');
+        await loadAnalytics();
+    }
+}
+
+async function checkUnansweredFeedback() {
+    if (!currentUser || !supabaseClient) return false;
+
+    try {
+        const { data } = await supabaseClient
+            .from('generations')
+            .select('id, match_name, openers, created_at')
+            .eq('user_id', currentUser.id)
+            .is('feedback', null)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        if (data && data.length > 0) {
+            pendingFeedbackItems = data;
+            return true;
+        }
+    } catch (e) {
+        console.error('Check feedback error:', e);
+    }
+    return false;
+}
+
+function showFeedbackPrompt() {
+    const modal = document.getElementById('feedback-prompt-modal');
+    const container = document.getElementById('feedback-prompt-list');
+    modal.classList.remove('hidden');
+    currentFeedbackIndex = 0;
+    renderFeedbackPrompt();
+}
+
+function renderFeedbackPrompt() {
+    const container = document.getElementById('feedback-prompt-list');
+
+    if (currentFeedbackIndex >= pendingFeedbackItems.length) {
+        // All done, show analytics
+        closeFeedbackPrompt();
+        const modal = document.getElementById('analytics-modal');
+        modal.classList.remove('hidden');
+        loadAnalytics();
+        return;
+    }
+
+    const item = pendingFeedbackItems[currentFeedbackIndex];
+    const preview = item.openers?.[0]?.text?.slice(0, 60) + '...' || 'Opener';
+    const timeAgo = getTimeAgo(new Date(item.created_at));
+
+    container.innerHTML = `
+        <div class="feedback-prompt-item">
+            <div class="feedback-prompt-header">
+                <span class="feedback-prompt-name">${item.match_name || 'Match'}</span>
+                <span class="feedback-prompt-time">${timeAgo}</span>
+            </div>
+            <p class="feedback-prompt-preview">"${preview}"</p>
+            <div class="feedback-prompt-buttons">
+                <button class="feedback-prompt-btn" onclick="submitPromptFeedback('${item.id}', 'sent')">📤 Sent</button>
+                <button class="feedback-prompt-btn success" onclick="submitPromptFeedback('${item.id}', 'replied')">💬 Reply</button>
+                <button class="feedback-prompt-btn fire" onclick="submitPromptFeedback('${item.id}', 'date')">🔥 Date</button>
+                <button class="feedback-prompt-btn fail" onclick="submitPromptFeedback('${item.id}', 'blocked')">💀 Blocked</button>
+            </div>
+            <button class="feedback-skip-btn" onclick="skipCurrentFeedback()">Didn't use it</button>
+        </div>
+        <div class="feedback-prompt-progress">${currentFeedbackIndex + 1} of ${pendingFeedbackItems.length}</div>
+    `;
+}
+
+async function submitPromptFeedback(generationId, result) {
+    try {
+        await supabaseClient
+            .from('generations')
+            .update({ feedback: result, feedback_at: new Date().toISOString() })
+            .eq('id', generationId);
+
+        showToast(result === 'date' ? '🔥 Nice!' : 'Saved!');
+    } catch (e) {
+        console.error('Feedback save error:', e);
+    }
+
+    currentFeedbackIndex++;
+    renderFeedbackPrompt();
+}
+
+function skipCurrentFeedback() {
+    currentFeedbackIndex++;
+    renderFeedbackPrompt();
+}
+
+function closeFeedbackPrompt() {
+    document.getElementById('feedback-prompt-modal').classList.add('hidden');
+    pendingFeedbackItems = [];
+    currentFeedbackIndex = 0;
+}
+
+function skipFeedbackPrompt() {
+    closeFeedbackPrompt();
+    const modal = document.getElementById('analytics-modal');
+    modal.classList.remove('hidden');
+    loadAnalytics();
 }
 
 // Check for payment success/cancel on page load
