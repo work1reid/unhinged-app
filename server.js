@@ -507,7 +507,7 @@ app.post('/api/analyze-convo', apiLimiter, async (req, res) => {
         const { image, goal, mediaType } = req.body;
 
         // Validate goal
-        const allowedGoals = ['flirty', 'date', 'number', 'recover'];
+        const allowedGoals = ['flirty', 'number', 'recover'];
         if (!allowedGoals.includes(goal)) {
             return res.status(400).json({ error: 'Invalid goal selected' });
         }
@@ -529,7 +529,6 @@ app.post('/api/analyze-convo', apiLimiter, async (req, res) => {
 
         const goalPrompts = {
             flirty: 'Keep the conversation flirty and playful',
-            date: 'Move toward asking them out on a date',
             number: 'Smoothly ask for their phone number',
             recover: 'Recover a conversation that has gone cold or awkward'
         };

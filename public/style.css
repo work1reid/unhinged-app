@@ -1490,6 +1490,10 @@ body {
     gap: 10px;
 }
 
+.goal-options.three-goals {
+    grid-template-columns: repeat(3, 1fr);
+}
+
 .goal-option {
     cursor: pointer;
 }
