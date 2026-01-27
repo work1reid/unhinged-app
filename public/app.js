@@ -91,31 +91,6 @@ async function signInWithGoogle() {
     }
 }
 
-async function signInWithEmail(email, password) {
-    if (!supabaseClient) return;
-
-    try {
-        // Try sign in
-        const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-        if (signInError) {
-            if (signInError.message.includes('Invalid login credentials')) {
-                // Sign up
-                const { data, error: signUpError } = await supabaseClient.auth.signUp({ email, password });
-                if (signUpError) throw signUpError;
-
-                if (data.user && !data.session) {
-                    showAuthMessage('Check email to confirm account', 'success');
-                }
-            } else {
-                throw signInError;
-            }
-        }
-    } catch (error) {
-        showAuthMessage(error.message, 'error');
-    }
-}
-
 async function signOut() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
@@ -1291,14 +1266,6 @@ function setupListeners() {
 
     // Login
     document.getElementById('google-signin-btn')?.addEventListener('click', signInWithGoogle);
-
-    document.getElementById('auth-form')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
-        signInWithEmail(email, password);
-    });
-
     document.getElementById('skip-login-btn')?.addEventListener('click', showHome);
 
     // Settings
