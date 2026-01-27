@@ -496,6 +496,121 @@ Return ONLY JSON:
 });
 
 // ===================
+// CONVERSATION COACH ENDPOINT
+// ===================
+
+app.post('/api/analyze-convo', apiLimiter, async (req, res) => {
+    const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    console.log(`[${requestId}] 💬 Conversation analysis request`);
+
+    try {
+        const { image, goal, mediaType } = req.body;
+
+        // Validate goal
+        const allowedGoals = ['flirty', 'date', 'number', 'recover'];
+        if (!allowedGoals.includes(goal)) {
+            return res.status(400).json({ error: 'Invalid goal selected' });
+        }
+
+        // Validate image
+        const validation = validateImage(image, mediaType || 'image/png');
+        if (!validation.valid) {
+            console.log(`[${requestId}] ❌ Validation failed:`, validation.error);
+            return res.status(400).json({ error: validation.error });
+        }
+
+        // Detect media type
+        let detectedMediaType = mediaType || 'image/png';
+        if (image.startsWith('/9j/')) detectedMediaType = 'image/jpeg';
+        else if (image.startsWith('iVBOR')) detectedMediaType = 'image/png';
+        else if (image.startsWith('UklGR')) detectedMediaType = 'image/webp';
+
+        console.log(`[${requestId}] 🖼️ Processing convo screenshot, goal: ${goal}`);
+
+        const goalPrompts = {
+            flirty: 'Keep the conversation flirty and playful',
+            date: 'Move toward asking them out on a date',
+            number: 'Smoothly ask for their phone number',
+            recover: 'Recover a conversation that has gone cold or awkward'
+        };
+
+        const analysisPrompt = `Analyze this dating app conversation screenshot. The user wants to: ${goalPrompts[goal]}.
+
+Return ONLY a JSON object with:
+{
+    "vibe": "one word describing the current chat energy (hot/warm/lukewarm/cold/awkward/flirty/friendly)",
+    "theirInterest": "low/medium/high - how interested they seem",
+    "summary": "2-3 sentence breakdown of how the conversation is going and the dynamic",
+    "responses": [
+        {"style": "Smooth", "emoji": "😏", "text": "suggested response"},
+        {"style": "Bold", "emoji": "🔥", "text": "more direct response"},
+        {"style": "Playful", "emoji": "😜", "text": "fun/teasing response"}
+    ],
+    "tips": [
+        "specific tip based on this conversation",
+        "another tip",
+        "third tip"
+    ],
+    "avoid": "one thing NOT to do in this situation"
+}
+
+Be specific to THIS conversation. Reference what they said. Keep responses short and natural (not essay-length).
+Return ONLY the JSON, no other text.`;
+
+        const claudeResponse = await anthropic.messages.create({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1024,
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'image',
+                            source: {
+                                type: 'base64',
+                                media_type: detectedMediaType,
+                                data: image
+                            }
+                        },
+                        {
+                            type: 'text',
+                            text: analysisPrompt
+                        }
+                    ]
+                }
+            ]
+        });
+
+        const responseText = claudeResponse.content[0].text;
+        console.log(`[${requestId}] 📝 Analysis complete`);
+
+        let result;
+        try {
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        } catch (e) {
+            console.error(`[${requestId}] ❌ Parse error:`, e.message);
+            result = {
+                vibe: 'unknown',
+                summary: responseText.slice(0, 200),
+                responses: [{ style: 'Suggested', emoji: '💬', text: 'Try being genuine and asking about something from their profile' }],
+                tips: ['Be yourself', 'Ask open-ended questions', 'Don\'t overthink it']
+            };
+        }
+
+        console.log(`[${requestId}] ✅ Conversation analysis complete`);
+        res.json(result);
+
+    } catch (error) {
+        console.error(`[${requestId}] ❌ API Error:`, error.message);
+        res.status(500).json({
+            error: 'Failed to analyze conversation',
+            message: 'Something went wrong. Please try again.'
+        });
+    }
+});
+
+// ===================
 // STRIPE PAYMENT ROUTES
 // ===================
 

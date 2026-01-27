@@ -834,6 +834,206 @@ async function migrateLocalHistoryToCloud() {
 }
 
 // ===================
+// CONVERSATION COACH
+// ===================
+let convoFile = null;
+let convoResults = null;
+
+function showConvo() {
+    updateConvoUsage();
+    showScreen('convo-screen');
+}
+
+function showConvoResults() {
+    showScreen('convo-results-screen');
+}
+
+function resetConvo() {
+    convoFile = null;
+    convoResults = null;
+
+    const preview = document.getElementById('convo-preview-image');
+    const content = document.getElementById('convo-upload-content');
+    const zone = document.getElementById('convo-upload-zone');
+    const generateSection = document.getElementById('convo-generate-section');
+
+    preview.style.display = 'none';
+    content.style.display = 'flex';
+    zone.classList.remove('has-image');
+    generateSection.style.display = 'none';
+
+    showConvo();
+}
+
+async function updateConvoUsage() {
+    const el = document.getElementById('convo-usage');
+    if (el) {
+        const remaining = await getRemainingGenerations();
+        el.textContent = `${remaining} left`;
+    }
+}
+
+function handleConvoFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) processConvoFile(file);
+}
+
+function processConvoFile(file) {
+    convoFile = file;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const preview = document.getElementById('convo-preview-image');
+        const content = document.getElementById('convo-upload-content');
+        const zone = document.getElementById('convo-upload-zone');
+
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+        content.style.display = 'none';
+        zone.classList.add('has-image');
+
+        document.getElementById('convo-generate-section').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+// Drag and drop for convo
+const convoUploadZone = document.getElementById('convo-upload-zone');
+if (convoUploadZone) {
+    convoUploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        convoUploadZone.style.borderColor = '#ff6b6b';
+    });
+
+    convoUploadZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        if (!convoFile) convoUploadZone.style.borderColor = 'rgba(255,255,255,0.15)';
+    });
+
+    convoUploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file?.type.startsWith('image/')) processConvoFile(file);
+    });
+}
+
+async function analyzeConvo() {
+    if (!convoFile) {
+        showToast('Upload a screenshot first');
+        return;
+    }
+
+    const canGen = await canGenerate();
+    if (!canGen) {
+        showToast('No credits left!');
+        return;
+    }
+
+    const goal = document.querySelector('input[name="convo-goal"]:checked').value;
+    showLoading();
+
+    const loadingInterval = startLoadingMessages();
+    const base64 = await fileToBase64(convoFile);
+    const mediaType = convoFile.type || 'image/png';
+
+    try {
+        const response = await fetch('/api/analyze-convo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64, goal, mediaType })
+        });
+
+        const data = await response.json();
+        clearInterval(loadingInterval);
+
+        if (!response.ok) {
+            showToast(data.message || 'Failed to analyze');
+            showConvo();
+            return;
+        }
+
+        convoResults = data;
+        await consumeGeneration();
+        displayConvoResults(data);
+        showConvoResults();
+
+    } catch (error) {
+        clearInterval(loadingInterval);
+        console.error(error);
+        showToast('Error analyzing');
+        showConvo();
+    }
+}
+
+function displayConvoResults(data) {
+    // Vibe
+    document.getElementById('convo-vibe').textContent = data.vibe || 'Unknown';
+    document.getElementById('convo-vibe').className = `convo-vibe-value vibe-${(data.vibe || '').toLowerCase()}`;
+
+    // Summary
+    document.getElementById('convo-summary').textContent = data.summary || 'No summary available';
+
+    // Suggested responses
+    const suggestionsEl = document.getElementById('convo-suggestions');
+    suggestionsEl.innerHTML = '';
+
+    (data.responses || []).forEach(resp => {
+        const div = document.createElement('div');
+        div.className = 'convo-suggestion';
+        div.onclick = () => copyConvoResponse(resp.text, div);
+        div.innerHTML = `
+            <div class="suggestion-header">
+                <span class="suggestion-emoji">${resp.emoji || '💬'}</span>
+                <span class="suggestion-style">${resp.style || 'Suggested'}</span>
+            </div>
+            <p class="suggestion-text">${resp.text}</p>
+        `;
+        suggestionsEl.appendChild(div);
+    });
+
+    // Tips
+    const tipsEl = document.getElementById('convo-tips-list');
+    tipsEl.innerHTML = '';
+    (data.tips || []).forEach(tip => {
+        const li = document.createElement('li');
+        li.textContent = tip;
+        tipsEl.appendChild(li);
+    });
+
+    // Add avoid tip if present
+    if (data.avoid) {
+        const li = document.createElement('li');
+        li.className = 'avoid-tip';
+        li.textContent = `🚫 Avoid: ${data.avoid}`;
+        tipsEl.appendChild(li);
+    }
+}
+
+function copyConvoResponse(text, element) {
+    navigator.clipboard.writeText(text);
+    document.querySelectorAll('.convo-suggestion').forEach(s => s.classList.remove('copied'));
+    element.classList.add('copied');
+    showToast('Copied!');
+    setTimeout(() => element.classList.remove('copied'), 2000);
+}
+
+async function shareConvoResults() {
+    if (!convoResults?.responses?.length) return;
+
+    const text = `UNHINGED AI suggests:\n\n"${convoResults.responses[0].text}"\n\nunhingedai.app`;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: 'Unhinged', text });
+            return;
+        } catch {}
+    }
+
+    navigator.clipboard.writeText(text);
+    showToast('Copied!');
+}
+
+// ===================
 // AGE VERIFICATION
 // ===================
 function checkAgeVerification() {

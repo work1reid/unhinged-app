@@ -182,6 +182,15 @@
                     </div>
                     <span class="nav-arrow">›</span>
                 </button>
+
+                <button class="nav-card nav-convo" onclick="showConvo()">
+                    <span class="nav-icon">💬</span>
+                    <div class="nav-info">
+                        <span class="nav-title">Conversation Coach</span>
+                        <span class="nav-desc">Get help with your chat</span>
+                    </div>
+                    <span class="nav-arrow">›</span>
+                </button>
             </div>
 
             <div class="home-cta">
@@ -351,6 +360,105 @@
                     <p>No Analysis Yet</p>
                     <span class="empty-hint">Generate openers to see match insights</span>
                 </div>
+            </div>
+        </div>
+
+        <!-- Conversation Coach Screen -->
+        <div id="convo-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showHome()">← Back</button>
+                <span class="screen-title">Conversation Coach</span>
+                <span class="usage-badge" id="convo-usage">5 left</span>
+            </div>
+
+            <h2>Drop the chat</h2>
+            <p class="subtitle">Screenshot your conversation</p>
+
+            <div class="upload-zone" id="convo-upload-zone" onclick="document.getElementById('convo-file-input').click()">
+                <div class="upload-content" id="convo-upload-content">
+                    <span class="upload-icon">💬</span>
+                    <p>Tap to upload</p>
+                    <p class="upload-hint">Screenshot of your texts</p>
+                </div>
+                <img id="convo-preview-image" class="preview-image" style="display: none;">
+            </div>
+
+            <input type="file" id="convo-file-input" accept="image/jpeg,image/png,image/webp" onchange="handleConvoFileSelect(event)" style="display: none;">
+
+            <div id="convo-generate-section" style="display: none;">
+                <div class="convo-goal">
+                    <h3>What's your goal?</h3>
+                    <div class="goal-options">
+                        <label class="goal-option">
+                            <input type="radio" name="convo-goal" value="flirty" checked>
+                            <span class="goal-card">
+                                <span class="goal-emoji">😏</span>
+                                <span class="goal-name">Keep it flirty</span>
+                            </span>
+                        </label>
+                        <label class="goal-option">
+                            <input type="radio" name="convo-goal" value="date">
+                            <span class="goal-card">
+                                <span class="goal-emoji">📅</span>
+                                <span class="goal-name">Get the date</span>
+                            </span>
+                        </label>
+                        <label class="goal-option">
+                            <input type="radio" name="convo-goal" value="number">
+                            <span class="goal-card">
+                                <span class="goal-emoji">📱</span>
+                                <span class="goal-name">Get number</span>
+                            </span>
+                        </label>
+                        <label class="goal-option">
+                            <input type="radio" name="convo-goal" value="recover">
+                            <span class="goal-card">
+                                <span class="goal-emoji">🔄</span>
+                                <span class="goal-name">Recover chat</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn-primary btn-full" onclick="analyzeConvo()">
+                    Analyze Chat 💬
+                </button>
+            </div>
+        </div>
+
+        <!-- Conversation Results Screen -->
+        <div id="convo-results-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showConvo()">← Back</button>
+                <span class="screen-title">Chat Analysis</span>
+                <button class="back-btn" onclick="resetConvo()">New</button>
+            </div>
+
+            <div class="convo-results" id="convo-results">
+                <div class="convo-vibe-section">
+                    <span class="convo-vibe-label">Chat Vibe</span>
+                    <span class="convo-vibe-value" id="convo-vibe">Loading...</span>
+                </div>
+
+                <div class="convo-breakdown" id="convo-breakdown">
+                    <h3>📊 Quick Take</h3>
+                    <p id="convo-summary">Analyzing...</p>
+                </div>
+
+                <div class="convo-responses">
+                    <h3>💬 What to say next</h3>
+                    <div id="convo-suggestions"></div>
+                </div>
+
+                <div class="convo-tips">
+                    <h3>💡 Pro Tips</h3>
+                    <ul id="convo-tips-list"></ul>
+                </div>
+            </div>
+
+            <div class="convo-actions">
+                <button class="btn-secondary" onclick="resetConvo()">🔄 New Chat</button>
+                <button class="btn-primary" onclick="shareConvoResults()">📤 Share</button>
             </div>
         </div>
 
