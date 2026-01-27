@@ -1357,6 +1357,12 @@ body {
     margin-top: 4px;
 }
 
+.pack-label-small {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 2px;
+}
+
 /* Referral */
 .referral-row {
     display: flex;
@@ -1405,6 +1411,87 @@ body {
     color: rgba(255, 255, 255, 0.5);
     margin-top: 10px;
     text-align: center;
+}
+
+/* Subscription */
+.btn-subscribe {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 18px 16px;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.2) 0%, rgba(254, 202, 87, 0.15) 100%);
+    border: 2px solid rgba(255, 107, 107, 0.4);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-subscribe:active {
+    transform: scale(0.98);
+    border-color: rgba(255, 107, 107, 0.6);
+}
+
+.sub-offer {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+}
+
+.sub-details {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.sub-price {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ff6b6b;
+    margin-top: 4px;
+}
+
+.sub-active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 0;
+}
+
+.sub-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+.sub-plan {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.btn-cancel-sub {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.btn-cancel-sub:active {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.3);
+    color: #ff6b6b;
 }
 
 /* Toggle */

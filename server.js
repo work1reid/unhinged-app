@@ -97,13 +97,37 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // Handle the checkout.session.completed event
+    // Handle one-time payment completed
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
         const userId = session.metadata.userId;
         const credits = parseInt(session.metadata.credits) || 30;
-        const paymentId = session.payment_intent;
+        const isSubscription = session.mode === 'subscription';
 
+        // For subscriptions, credits are added on invoice.paid
+        if (isSubscription) {
+            const subscriptionId = session.subscription;
+            console.log(`📦 Subscription created for user ${userId}: ${subscriptionId}`);
+
+            // Store subscription info
+            try {
+                await supabaseAdmin
+                    .from('subscriptions')
+                    .upsert({
+                        user_id: userId,
+                        stripe_subscription_id: subscriptionId,
+                        status: 'active',
+                        credits_per_period: credits,
+                        updated_at: new Date().toISOString()
+                    });
+            } catch (err) {
+                console.error('❌ Failed to store subscription:', err);
+            }
+            return res.json({ received: true });
+        }
+
+        // One-time payment
+        const paymentId = session.payment_intent;
         console.log(`💰 Payment received for user ${userId}, payment: ${paymentId}`);
 
         try {
@@ -159,6 +183,98 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         } catch (err) {
             console.error('❌ Webhook processing error:', err);
             return res.status(500).json({ error: 'Processing failed' });
+        }
+    }
+
+    // Handle subscription invoice paid (weekly renewal)
+    if (event.type === 'invoice.paid') {
+        const invoice = event.data.object;
+        const subscriptionId = invoice.subscription;
+
+        if (!subscriptionId) {
+            return res.json({ received: true });
+        }
+
+        console.log(`💳 Invoice paid for subscription ${subscriptionId}`);
+
+        try {
+            // Get subscription from our DB
+            const { data: subscription } = await supabaseAdmin
+                .from('subscriptions')
+                .select('user_id, credits_per_period')
+                .eq('stripe_subscription_id', subscriptionId)
+                .single();
+
+            if (!subscription) {
+                console.log(`⚠️ Subscription ${subscriptionId} not found in DB`);
+                return res.json({ received: true });
+            }
+
+            const userId = subscription.user_id;
+            const credits = subscription.credits_per_period || 50;
+
+            // Check idempotency
+            const { data: existingPayment } = await supabaseAdmin
+                .from('payments')
+                .select('id')
+                .eq('stripe_payment_id', invoice.id)
+                .single();
+
+            if (existingPayment) {
+                console.log(`⚠️ Invoice ${invoice.id} already processed`);
+                return res.json({ received: true });
+            }
+
+            // Get current credits
+            const { data: currentCredits } = await supabaseAdmin
+                .from('credits')
+                .select('balance, total_purchased')
+                .eq('id', userId)
+                .single();
+
+            const currentBalance = currentCredits?.balance || 0;
+            const totalPurchased = currentCredits?.total_purchased || 0;
+
+            // Add credits
+            await supabaseAdmin
+                .from('credits')
+                .upsert({
+                    id: userId,
+                    balance: currentBalance + credits,
+                    total_purchased: totalPurchased + credits,
+                    updated_at: new Date().toISOString()
+                });
+
+            // Log payment
+            await supabaseAdmin
+                .from('payments')
+                .insert({
+                    user_id: userId,
+                    stripe_payment_id: invoice.id,
+                    amount: invoice.amount_paid,
+                    credits: credits,
+                    type: 'subscription',
+                    created_at: new Date().toISOString()
+                });
+
+            console.log(`✅ Subscription renewal: Added ${credits} credits to user ${userId}`);
+        } catch (err) {
+            console.error('❌ Subscription renewal error:', err);
+        }
+    }
+
+    // Handle subscription cancelled
+    if (event.type === 'customer.subscription.deleted') {
+        const subscription = event.data.object;
+        console.log(`❌ Subscription cancelled: ${subscription.id}`);
+
+        try {
+            await supabaseAdmin
+                .from('subscriptions')
+                .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+                .eq('stripe_subscription_id', subscription.id);
+        } catch (err) {
+            console.error('❌ Failed to update subscription status:', err);
         }
     }
 
@@ -737,6 +853,17 @@ const CREDIT_PACKS = {
     }
 };
 
+// Subscription options
+const SUBSCRIPTIONS = {
+    weekly: {
+        name: 'Weekly Pro',
+        description: '25 credits per week, auto-renews',
+        credits: 25,
+        price: 500, // $5.00 in cents
+        interval: 'week'
+    }
+};
+
 // Create Stripe checkout session
 app.post('/api/create-checkout', async (req, res) => {
     try {
@@ -777,6 +904,81 @@ app.post('/api/create-checkout', async (req, res) => {
     } catch (error) {
         console.error('Stripe checkout error:', error);
         res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+});
+
+// Create Stripe subscription checkout
+app.post('/api/create-subscription', async (req, res) => {
+    try {
+        const { userId, email, plan } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ error: 'User must be logged in to subscribe' });
+        }
+
+        const selectedPlan = SUBSCRIPTIONS[plan] || SUBSCRIPTIONS.weekly;
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: selectedPlan.name,
+                        description: selectedPlan.description
+                    },
+                    unit_amount: selectedPlan.price,
+                    recurring: {
+                        interval: selectedPlan.interval
+                    }
+                },
+                quantity: 1
+            }],
+            mode: 'subscription',
+            success_url: 'https://unhingedai.app/?payment=success&type=subscription',
+            cancel_url: 'https://unhingedai.app/?payment=cancelled',
+            customer_email: email,
+            metadata: {
+                userId: userId,
+                credits: String(selectedPlan.credits)
+            }
+        });
+
+        res.json({ sessionId: session.id, url: session.url });
+    } catch (error) {
+        console.error('Stripe subscription error:', error);
+        res.status(500).json({ error: 'Failed to create subscription' });
+    }
+});
+
+// Cancel subscription
+app.post('/api/cancel-subscription', async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID required' });
+        }
+
+        // Get subscription from DB
+        const { data: subscription } = await supabaseAdmin
+            .from('subscriptions')
+            .select('stripe_subscription_id')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .single();
+
+        if (!subscription) {
+            return res.status(404).json({ error: 'No active subscription found' });
+        }
+
+        // Cancel in Stripe
+        await stripe.subscriptions.cancel(subscription.stripe_subscription_id);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Cancel subscription error:', error);
+        res.status(500).json({ error: 'Failed to cancel subscription' });
     }
 });
 

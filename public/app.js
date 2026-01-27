@@ -47,6 +47,7 @@ async function initSupabase() {
             currentUser = session.user;
             await loadUsername();
             await loadCredits();
+            await loadSubscription();
         }
 
         supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -54,9 +55,10 @@ async function initSupabase() {
             currentUser = session?.user || null;
 
             if (event === 'SIGNED_IN') {
-                // Load username, credits and migrate history
+                // Load username, credits, subscription and migrate history
                 await loadUsername();
                 await loadCredits();
+                await loadSubscription();
                 await migrateLocalHistoryToCloud();
                 await processReferralOnSignup();
                 showHome();
@@ -64,6 +66,7 @@ async function initSupabase() {
             } else if (event === 'SIGNED_OUT') {
                 currentUsername = null;
                 purchasedCredits = 0;
+                currentSubscription = null;
                 showLogin();
             }
 
@@ -259,6 +262,99 @@ async function buyCredits(pack = 'value') {
     } catch (error) {
         console.error('Checkout error:', error);
         showToast('Payment error');
+    }
+}
+
+// ===================
+// SUBSCRIPTION SYSTEM
+// ===================
+let currentSubscription = null;
+
+async function loadSubscription() {
+    if (!currentUser || !supabaseClient) {
+        currentSubscription = null;
+        return null;
+    }
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .eq('status', 'active')
+            .single();
+
+        if (data) {
+            currentSubscription = data;
+            return data;
+        }
+    } catch (e) {
+        console.log('No active subscription');
+    }
+    currentSubscription = null;
+    return null;
+}
+
+async function buySubscription(plan = 'weekly') {
+    if (!currentUser) {
+        showToast('Sign in to subscribe');
+        showLogin();
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/create-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                email: currentUser.email,
+                plan: plan
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            showToast('Failed to start subscription');
+        }
+    } catch (error) {
+        console.error('Subscription error:', error);
+        showToast('Subscription error');
+    }
+}
+
+async function cancelSubscription() {
+    if (!currentUser || !currentSubscription) {
+        showToast('No active subscription');
+        return;
+    }
+
+    if (!confirm('Cancel your subscription? You\'ll keep your remaining credits.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/cancel-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            currentSubscription = null;
+            showToast('Subscription cancelled');
+            updateSettingsUI();
+        } else {
+            showToast(data.error || 'Failed to cancel');
+        }
+    } catch (error) {
+        console.error('Cancel error:', error);
+        showToast('Error cancelling');
     }
 }
 
@@ -639,11 +735,18 @@ async function loadAnalytics() {
 async function checkPaymentStatus() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
+    const paymentType = params.get('type');
 
     if (payment === 'success') {
         // Credits are added server-side via webhook - just reload balance
         await loadCredits();
-        showToast(`🎉 Credits added to your account!`);
+        await loadSubscription();
+
+        if (paymentType === 'subscription') {
+            showToast(`🎉 Subscribed! 25 credits added weekly.`);
+        } else {
+            showToast(`🎉 Credits added to your account!`);
+        }
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
     } else if (payment === 'cancelled') {
@@ -904,9 +1007,8 @@ async function updateSettingsUI() {
     const usernameSection = document.getElementById('username-section');
     const signoutBtn = document.getElementById('settings-signout-btn');
     const signinBtn = document.getElementById('settings-signin-btn');
-    const settingsPacks = document.getElementById('settings-packs');
-    const creditsInfo = document.getElementById('settings-credits-info');
-    const creditsValue = document.getElementById('settings-credits-value');
+    const creditsSection = document.getElementById('settings-credits-section');
+    const subscriptionStatus = document.getElementById('subscription-status');
     const referralSection = document.getElementById('settings-referral');
     const referralLinkInput = document.getElementById('referral-link-input');
     const referralStats = document.getElementById('referral-stats');
@@ -917,9 +1019,28 @@ async function updateSettingsUI() {
         usernameSection.style.display = 'block';
         signoutBtn.style.display = 'block';
         signinBtn.style.display = 'none';
-        settingsPacks.style.display = 'block';
-        creditsInfo.style.display = 'flex';
-        creditsValue.textContent = purchasedCredits;
+        creditsSection.style.display = 'block';
+
+        // Load and show subscription status
+        await loadSubscription();
+        if (subscriptionStatus) {
+            if (currentSubscription) {
+                subscriptionStatus.innerHTML = `
+                    <div class="sub-active">
+                        <span class="sub-badge">✓ Active</span>
+                        <span class="sub-plan">Weekly Pro - 25 credits/week</span>
+                    </div>
+                    <button class="btn-cancel-sub" onclick="cancelSubscription()">Cancel Subscription</button>
+                `;
+            } else {
+                subscriptionStatus.innerHTML = `
+                    <button class="btn-subscribe" onclick="buySubscription('weekly')">
+                        <span class="sub-offer">🔥 Weekly Pro</span>
+                        <span class="sub-details">25 credits every week</span>
+                    </button>
+                `;
+            }
+        }
 
         // Show referral section
         referralSection.style.display = 'block';
@@ -937,8 +1058,7 @@ async function updateSettingsUI() {
         usernameSection.style.display = 'none';
         signoutBtn.style.display = 'none';
         signinBtn.style.display = 'block';
-        settingsPacks.style.display = 'none';
-        creditsInfo.style.display = 'none';
+        creditsSection.style.display = 'none';
         referralSection.style.display = 'none';
     }
 }
