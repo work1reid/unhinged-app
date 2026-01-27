@@ -409,88 +409,79 @@
         <!-- Settings Modal -->
         <div id="settings-modal" class="modal hidden">
             <div class="modal-content settings-modal-content">
-                <button class="close-modal-btn" id="close-settings-modal">&times;</button>
-                <h2>Settings</h2>
+                <button class="close-modal-btn" id="close-settings-modal">✕</button>
 
-                <div class="settings-section">
-                    <div id="username-section" class="username-section" style="display: none;">
-                        <label class="settings-label">Username</label>
-                        <div class="username-input-row">
-                            <input type="text" id="settings-username" placeholder="Enter username" maxlength="20">
-                            <button class="btn-save" id="save-username-btn">Save</button>
+                <!-- Profile Header -->
+                <div class="settings-profile">
+                    <div class="profile-avatar">🔥</div>
+                    <div class="profile-info">
+                        <span class="profile-email" id="settings-email">Not signed in</span>
+                        <div id="username-section" class="username-row" style="display: none;">
+                            <input type="text" id="settings-username" placeholder="Add username" maxlength="20">
+                            <button class="btn-save-small" id="save-username-btn">✓</button>
                         </div>
                     </div>
+                </div>
 
-                    <div class="settings-user">
-                        <label class="settings-label">Email</label>
-                        <span class="settings-email" id="settings-email">Not signed in</span>
+                <!-- Credits Card -->
+                <div class="settings-card" id="settings-credits-info" style="display: none;">
+                    <div class="card-row">
+                        <span class="card-label">💰 Credits</span>
+                        <span class="card-value" id="settings-credits-value">0</span>
                     </div>
-
-                    <button class="btn-secondary btn-full" id="settings-signout-btn" style="display: none;">
-                        Sign Out
-                    </button>
-
-                    <button class="btn-primary btn-full" id="settings-signin-btn">
-                        Sign In for More
-                    </button>
-
                 </div>
 
-                <div class="credits-info" id="settings-credits-info" style="display: none;">
-                    <span class="credits-label">Your Credits:</span>
-                    <span class="credits-value" id="settings-credits-value">0</span>
+                <!-- Buy Credits -->
+                <div class="settings-card" id="settings-packs" style="display: none;">
+                    <span class="card-title">Get More Credits</span>
+                    <div class="pack-row">
+                        <button class="pack-option" onclick="buyCredits('starter')">
+                            <span class="pack-amt">5</span>
+                            <span class="pack-cost">$2</span>
+                        </button>
+                        <button class="pack-option pack-best" onclick="buyCredits('value')">
+                            <span class="pack-tag">BEST</span>
+                            <span class="pack-amt">30</span>
+                            <span class="pack-cost">$7.99</span>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="settings-referral" id="settings-referral" style="display: none;">
-                    <p class="referral-title">🎁 Invite Friends</p>
-                    <p class="referral-desc">Get 3 free credits for each friend who signs up!</p>
-                    <div class="referral-link-box">
+                <!-- Referral -->
+                <div class="settings-card" id="settings-referral" style="display: none;">
+                    <span class="card-title">🎁 Invite Friends</span>
+                    <p class="card-desc">Get 3 free credits for each signup</p>
+                    <div class="referral-row">
                         <input type="text" id="referral-link-input" readonly>
-                        <button class="btn-copy" onclick="copyReferralLink()">Copy</button>
+                        <button class="btn-copy-small" onclick="copyReferralLink()">Copy</button>
                     </div>
-                    <button class="btn-share-referral" onclick="shareReferral()">
-                        📤 Share Invite Link
-                    </button>
+                    <button class="btn-share" onclick="shareReferral()">Share Link</button>
                     <p class="referral-stats" id="referral-stats"></p>
                 </div>
 
-                <div class="settings-packs" id="settings-packs" style="display: none;">
-                    <p class="packs-title">Buy More Credits</p>
-                    <div class="pack-options">
-                        <button class="pack-btn pack-starter" onclick="buyCredits('starter')">
-                            <span class="pack-credits">5</span>
-                            <span class="pack-label">credits</span>
-                            <span class="pack-price">$2</span>
-                        </button>
-                        <button class="pack-btn pack-value" onclick="buyCredits('value')">
-                            <span class="pack-badge">BEST VALUE</span>
-                            <span class="pack-credits">30</span>
-                            <span class="pack-label">credits</span>
-                            <span class="pack-price">$7.99</span>
-                            <span class="pack-savings">Save 33%</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="settings-notifications" id="settings-notifications">
-                    <div class="notification-row">
-                        <div class="notification-info">
-                            <span class="notification-label">🔔 Reminders</span>
-                            <span class="notification-desc">Get reminded to check your matches</span>
-                        </div>
-                        <label class="toggle-switch">
+                <!-- Notifications -->
+                <div class="settings-card">
+                    <div class="card-row">
+                        <span class="card-label">🔔 Reminders</span>
+                        <label class="toggle">
                             <input type="checkbox" id="notifications-toggle" onchange="toggleNotifications()">
-                            <span class="toggle-slider"></span>
+                            <span class="toggle-track"></span>
                         </label>
                     </div>
                 </div>
 
-                <div class="settings-links">
-                    <a href="/terms.html">Terms of Service</a>
-                    <a href="/privacy.html">Privacy Policy</a>
-                </div>
+                <!-- Sign In/Out -->
+                <button class="btn-signout" id="settings-signout-btn" style="display: none;">Sign Out</button>
+                <button class="btn-signin" id="settings-signin-btn">Sign In</button>
 
-                <p class="settings-version">Unhinged v1.0</p>
+                <!-- Footer -->
+                <div class="settings-footer">
+                    <a href="/terms.html">Terms</a>
+                    <span>•</span>
+                    <a href="/privacy.html">Privacy</a>
+                    <span>•</span>
+                    <span class="version">v1.0</span>
+                </div>
             </div>
         </div>
 

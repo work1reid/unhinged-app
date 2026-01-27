@@ -1147,195 +1147,321 @@ body {
 .settings-modal-content {
     position: relative;
     text-align: left;
+    padding: 24px 20px;
 }
 
-.settings-modal-content h2 {
-    text-align: center;
-    margin-bottom: 24px;
-}
-
-.settings-section {
-    margin-bottom: 24px;
-}
-
-.settings-label {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: block;
-    margin-bottom: 6px;
-}
-
-.username-section {
-    margin-bottom: 20px;
-}
-
-.username-input-row {
+/* Profile Header */
+.settings-profile {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.username-input-row input {
+.profile-avatar {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.profile-info {
     flex: 1;
-    padding: 12px 14px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.profile-email {
     font-size: 15px;
+    font-weight: 600;
+    color: white;
+}
+
+.username-row {
+    display: flex;
+    gap: 6px;
+}
+
+.username-row input {
+    flex: 1;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
     outline: none;
 }
 
-.username-input-row input:focus {
+.username-row input:focus {
     border-color: #ff6b6b;
 }
 
-.btn-save {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+.btn-save-small {
+    background: #ff6b6b;
     border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Settings Cards */
+.settings-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-label {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.card-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2ecc71;
+}
+
+.card-title {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 12px;
+}
+
+.card-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 12px;
+}
+
+/* Pack Options */
+.pack-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.pack-option {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pack-option:active {
+    transform: scale(0.97);
+}
+
+.pack-option.pack-best {
+    background: rgba(46, 204, 113, 0.15);
+    border-color: rgba(46, 204, 113, 0.4);
+}
+
+.pack-tag {
+    position: absolute;
+    top: -8px;
+    background: #2ecc71;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.pack-amt {
+    font-size: 28px;
+    font-weight: 800;
+    color: white;
+}
+
+.pack-best .pack-amt {
+    color: #2ecc71;
+}
+
+.pack-cost {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 2px;
+}
+
+/* Referral */
+.referral-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.referral-row input {
+    flex: 1;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    outline: none;
+}
+
+.btn-copy-small {
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-share {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(155, 89, 182, 0.3) 0%, rgba(142, 68, 173, 0.2) 100%);
+    border: 1px solid rgba(155, 89, 182, 0.4);
+    border-radius: 10px;
     color: white;
     font-size: 14px;
     font-weight: 600;
-    padding: 12px 18px;
-    border-radius: 10px;
     cursor: pointer;
+}
+
+.referral-stats {
+    font-size: 11px;
+    color: rgba(155, 89, 182, 0.8);
+    margin-top: 8px;
+    text-align: center;
+}
+
+/* Toggle */
+.toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 26px;
+}
+
+.toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-track {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 26px;
+    transition: 0.2s;
+}
+
+.toggle-track::before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.2s;
+}
+
+.toggle input:checked + .toggle-track {
+    background: #ff6b6b;
+}
+
+.toggle input:checked + .toggle-track::before {
+    transform: translateX(18px);
+}
+
+/* Sign In/Out Buttons */
+.btn-signout {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.btn-signin {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+/* Footer */
+.settings-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-footer a {
+    color: rgba(255, 255, 255, 0.4);
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.settings-footer span {
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 12px;
+}
+
+.settings-footer .version {
+    color: rgba(255, 255, 255, 0.3);
 }
 
 .btn-save:active {
     transform: scale(0.97);
 }
 
-.settings-user {
-    margin-bottom: 20px;
-}
-
-.settings-email {
-    font-size: 15px;
-    color: rgba(255, 255, 255, 0.7);
-}
-
-.credits-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    background: linear-gradient(135deg, rgba(46, 204, 113, 0.15) 0%, rgba(39, 174, 96, 0.1) 100%);
-    border: 1px solid rgba(46, 204, 113, 0.3);
-    border-radius: 12px;
-    margin-top: 16px;
-}
-
-.credits-label {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-}
-
-.credits-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: #2ecc71;
-}
-
-/* Referral Section */
-.settings-referral {
-    margin-top: 20px;
-    padding: 16px;
-    background: linear-gradient(135deg, rgba(155, 89, 182, 0.15) 0%, rgba(142, 68, 173, 0.1) 100%);
-    border: 1px solid rgba(155, 89, 182, 0.3);
-    border-radius: 14px;
-}
-
-.referral-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 6px;
-}
-
-.referral-desc {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 12px;
-}
-
-.referral-link-box {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.referral-link-box input {
-    flex: 1;
-    padding: 10px 12px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 12px;
-    outline: none;
-}
-
-.btn-copy {
-    padding: 10px 14px;
-    background: rgba(155, 89, 182, 0.3);
-    border: 1px solid rgba(155, 89, 182, 0.4);
-    border-radius: 8px;
-    color: white;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-copy:active {
-    transform: scale(0.95);
-    background: rgba(155, 89, 182, 0.5);
-}
-
-.btn-share-referral {
-    width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-    border: none;
-    border-radius: 10px;
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-share-referral:active {
-    transform: scale(0.97);
-}
-
-.referral-stats {
-    font-size: 12px;
-    color: rgba(155, 89, 182, 0.9);
-    margin-top: 10px;
-    text-align: center;
-}
-
-.settings-links {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 24px;
-}
-
-.settings-links a {
-    color: rgba(255, 255, 255, 0.5);
-    text-decoration: none;
-    font-size: 14px;
-    padding: 8px 0;
-}
-
-.settings-version {
-    text-align: center;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.3);
-}
 
 /* ===================
    BUTTONS
@@ -1927,81 +2053,6 @@ body {
    NOTIFICATIONS TOGGLE
    =================== */
 
-.settings-notifications {
-    margin-top: 20px;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-}
-
-.notification-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.notification-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.notification-label {
-    font-size: 14px;
-    font-weight: 600;
-    color: white;
-}
-
-.notification-desc {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 28px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(255, 255, 255, 0.15);
-    border-radius: 28px;
-    transition: 0.3s;
-}
-
-.toggle-slider::before {
-    position: absolute;
-    content: "";
-    height: 22px;
-    width: 22px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    border-radius: 50%;
-    transition: 0.3s;
-}
-
-input:checked + .toggle-slider {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-}
-
-input:checked + .toggle-slider::before {
-    transform: translateX(22px);
-}
 
 /* ===================
    ANALYTICS MODAL
