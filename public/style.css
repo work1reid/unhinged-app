@@ -259,29 +259,29 @@ body {
    =================== */
 
 #home-screen {
-    padding-top: 24px;
+    padding-top: 20px;
+    gap: 0;
 }
 
 .home-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 28px;
+    align-items: center;
+    margin-bottom: 24px;
 }
 
 .home-logo {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
+    gap: 10px;
 }
 
 .home-logo-icon {
-    font-size: 32px;
+    font-size: 28px;
 }
 
 .home-logo-text {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 900;
     letter-spacing: -1px;
     background: linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%);
@@ -293,201 +293,215 @@ body {
 .home-user {
     display: flex;
     flex-direction: column;
-    gap: 4px;
 }
 
 .home-greeting {
-    font-size: 28px;
-    font-weight: 800;
-    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .home-status {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    display: none;
+}
+
+.home-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .btn-icon {
-    background: linear-gradient(135deg, rgba(255,107,107,0.15) 0%, rgba(254,202,87,0.15) 100%);
-    border: 1px solid rgba(255, 107, 107, 0.3);
-    color: #ff6b6b;
-    width: 44px;
-    height: 44px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 40px;
+    height: 40px;
     border-radius: 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 18px;
 }
 
 .btn-icon:active {
-    background: linear-gradient(135deg, rgba(255,107,107,0.25) 0%, rgba(254,202,87,0.25) 100%);
-    color: white;
+    background: rgba(255, 255, 255, 0.15);
 }
 
 /* Stats */
 .home-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 28px;
-}
-
-.home-stats.two-stats {
-    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
 .stat-card {
-    background: linear-gradient(160deg, rgba(255,107,107,0.1) 0%, rgba(254,202,87,0.05) 100%);
-    border: 1px solid rgba(255, 107, 107, 0.2);
-    border-radius: 16px;
-    padding: 16px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 14px 10px;
     text-align: center;
-}
-
-.stat-card:nth-child(2) {
-    background: linear-gradient(160deg, rgba(254,202,87,0.1) 0%, rgba(255,159,243,0.05) 100%);
-    border-color: rgba(254, 202, 87, 0.2);
-}
-
-.stat-card:nth-child(3) {
-    background: linear-gradient(160deg, rgba(255,159,243,0.1) 0%, rgba(155,89,182,0.05) 100%);
-    border-color: rgba(255, 159, 243, 0.2);
 }
 
 .stat-number {
     display: block;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 800;
-    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: white;
+}
+
+.stat-card:nth-child(1) .stat-number {
+    color: #ff6b6b;
 }
 
 .stat-card:nth-child(2) .stat-number {
-    background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #feca57;
 }
 
 .stat-card:nth-child(3) .stat-number {
-    background: linear-gradient(135deg, #ff9ff3 0%, #9b59b6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #2ecc71;
 }
 
 .stat-label {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.6);
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
     margin-top: 4px;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-/* Navigation Cards */
-.home-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 28px;
-}
-
-.nav-card {
+/* Hero Card */
+.hero-card {
     display: flex;
     align-items: center;
-    gap: 16px;
-    background: linear-gradient(160deg, rgba(26,26,46,0.8) 0%, rgba(22,33,62,0.6) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
+    justify-content: space-between;
     width: 100%;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 50%, #feca57 100%);
+    background-size: 200% 200%;
+    border: none;
+    border-radius: 20px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(255, 107, 107, 0.4);
     position: relative;
     overflow: hidden;
 }
 
-.nav-card::before {
+.hero-card::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #ff6b6b, transparent);
-    opacity: 0;
-    transition: opacity 0.2s;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
 }
 
-.nav-card:active {
+.hero-card:active {
     transform: scale(0.98);
+    box-shadow: 0 4px 20px rgba(255, 107, 107, 0.5);
 }
 
-.nav-card:active::before {
-    opacity: 1;
+.hero-card:active::before {
+    left: 100%;
 }
 
-.nav-generate {
-    background: linear-gradient(160deg, rgba(255,107,107,0.15) 0%, rgba(238,90,36,0.08) 100%);
-    border-color: rgba(255, 107, 107, 0.3);
+.hero-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
-.nav-generate::before {
-    background: linear-gradient(90deg, transparent, #ff6b6b, #feca57, transparent);
+.hero-icon {
+    font-size: 48px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-.nav-history {
-    background: linear-gradient(160deg, rgba(254,202,87,0.12) 0%, rgba(255,159,243,0.06) 100%);
+.hero-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.hero-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.hero-desc {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.hero-arrow {
+    font-size: 28px;
+    color: white;
+    font-weight: 300;
+    opacity: 0.8;
+}
+
+/* Feature Grid */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.feature-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(160deg, rgba(26,26,46,0.9) 0%, rgba(22,33,62,0.7) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 24px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.feature-card:active {
+    transform: scale(0.96);
+    border-color: rgba(255, 107, 107, 0.4);
+    background: linear-gradient(160deg, rgba(255,107,107,0.1) 0%, rgba(26,26,46,0.9) 100%);
+}
+
+.feature-card:nth-child(1) {
+    border-color: rgba(52, 152, 219, 0.3);
+}
+
+.feature-card:nth-child(2) {
     border-color: rgba(254, 202, 87, 0.3);
 }
 
-.nav-history::before {
-    background: linear-gradient(90deg, transparent, #feca57, #ff9ff3, transparent);
-}
-
-.nav-analysis {
-    background: linear-gradient(160deg, rgba(155,89,182,0.12) 0%, rgba(108,92,231,0.06) 100%);
+.feature-card:nth-child(3) {
     border-color: rgba(155, 89, 182, 0.3);
 }
 
-.nav-analysis::before {
-    background: linear-gradient(90deg, transparent, #9b59b6, #6c5ce7, transparent);
+.feature-card:nth-child(4) {
+    border-color: rgba(46, 204, 113, 0.3);
 }
 
-.nav-icon {
+.feature-icon {
     font-size: 36px;
-    filter: drop-shadow(0 2px 8px rgba(255,107,107,0.3));
 }
 
-.nav-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.nav-title {
-    font-size: 17px;
-    font-weight: 700;
-    display: block;
-    color: #fff;
-}
-
-.nav-desc {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.nav-arrow {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 24px;
-    font-weight: 300;
+.feature-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .home-cta {

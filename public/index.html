@@ -69,22 +69,30 @@
         <!-- Home Screen -->
         <div id="home-screen" class="screen">
             <div class="home-header">
-                <div class="home-user">
-                    <div class="home-logo">
-                        <span class="home-logo-icon">🔥</span>
-                        <span class="home-logo-text">UNHINGED</span>
-                    </div>
-                    <span class="home-greeting" id="home-greeting">Hey there!</span>
-                    <span class="home-status" id="home-status"></span>
+                <div class="home-logo">
+                    <span class="home-logo-icon">🔥</span>
+                    <span class="home-logo-text">UNHINGED</span>
                 </div>
-                <button class="btn-icon" id="settings-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </button>
+                <div class="home-header-right">
+                    <span class="home-greeting" id="home-greeting">Hey!</span>
+                    <span class="home-status" id="home-status"></span>
+                    <button class="btn-icon" id="settings-btn">⚙️</button>
+                </div>
             </div>
 
+            <!-- Hero Card -->
+            <button class="hero-card" onclick="showGenerate()">
+                <div class="hero-content">
+                    <span class="hero-icon">🔥</span>
+                    <div class="hero-text">
+                        <span class="hero-title">Generate Openers</span>
+                        <span class="hero-desc">Upload a profile, get unhinged lines</span>
+                    </div>
+                </div>
+                <span class="hero-arrow">→</span>
+            </button>
+
+            <!-- Stats Row -->
             <div class="home-stats">
                 <div class="stat-card">
                     <span class="stat-number" id="stat-remaining">5</span>
@@ -100,56 +108,26 @@
                 </div>
             </div>
 
-            <div class="home-nav">
-                <button class="nav-card nav-generate" onclick="showGenerate()">
-                    <span class="nav-icon">🔥</span>
-                    <div class="nav-info">
-                        <span class="nav-title">Generate Openers</span>
-                        <span class="nav-desc">Create unhinged pickup lines</span>
-                    </div>
-                    <span class="nav-arrow">›</span>
+            <!-- Feature Grid -->
+            <div class="feature-grid">
+                <button class="feature-card" onclick="showConvo()">
+                    <span class="feature-icon">💬</span>
+                    <span class="feature-title">Chat Coach</span>
                 </button>
 
-                <button class="nav-card nav-history" onclick="showHistory()">
-                    <span class="nav-icon">📜</span>
-                    <div class="nav-info">
-                        <span class="nav-title">History</span>
-                        <span class="nav-desc">View your past openers</span>
-                    </div>
-                    <span class="nav-arrow">›</span>
+                <button class="feature-card" onclick="showHistory()">
+                    <span class="feature-icon">📜</span>
+                    <span class="feature-title">History</span>
                 </button>
 
-                <button class="nav-card nav-analysis" onclick="showAnalysis()">
-                    <span class="nav-icon">🧠</span>
-                    <div class="nav-info">
-                        <span class="nav-title">Match Insights</span>
-                        <span class="nav-desc">View last profile analysis</span>
-                    </div>
-                    <span class="nav-arrow">›</span>
+                <button class="feature-card" onclick="showAnalysis()">
+                    <span class="feature-icon">🧠</span>
+                    <span class="feature-title">Insights</span>
                 </button>
 
-                <button class="nav-card nav-convo" onclick="showConvo()">
-                    <span class="nav-icon">💬</span>
-                    <div class="nav-info">
-                        <span class="nav-title">Conversation Coach</span>
-                        <span class="nav-desc">Get help with your chat</span>
-                    </div>
-                    <span class="nav-arrow">›</span>
-                </button>
-
-                <button class="nav-card nav-analytics" onclick="showAnalytics()">
-                    <span class="nav-icon">📊</span>
-                    <div class="nav-info">
-                        <span class="nav-title">Analytics</span>
-                        <span class="nav-desc">See which modes work best</span>
-                    </div>
-                    <span class="nav-arrow">›</span>
-                </button>
-            </div>
-
-            <div class="home-cta">
-                <button class="btn-primary btn-large" onclick="showGenerate()">
-                    Generate Opener 🔥
+                <button class="feature-card" onclick="showAnalytics()">
+                    <span class="feature-icon">📊</span>
+                    <span class="feature-title">Analytics</span>
                 </button>
             </div>
 
