@@ -1567,6 +1567,31 @@ body {
 .convo-vibe-value.vibe-flirty { background: linear-gradient(135deg, #e91e63 0%, #ff6b6b 100%); -webkit-background-clip: text; background-clip: text; }
 .convo-vibe-value.vibe-cold, .convo-vibe-value.vibe-awkward { background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); -webkit-background-clip: text; background-clip: text; }
 
+.convo-replying-to {
+    background: linear-gradient(160deg, rgba(26,26,46,0.8) 0%, rgba(22,33,62,0.6) 100%);
+    border-left: 3px solid #3498db;
+    border-radius: 0 12px 12px 0;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+}
+
+.replying-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.5);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.replying-message {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    font-style: italic;
+    margin: 0;
+    line-height: 1.4;
+}
+
 .convo-breakdown,
 .convo-responses,
 .convo-tips {

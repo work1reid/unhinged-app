@@ -534,27 +534,40 @@ app.post('/api/analyze-convo', apiLimiter, async (req, res) => {
             recover: 'Recover a conversation that has gone cold or awkward'
         };
 
-        const analysisPrompt = `Analyze this dating app conversation screenshot. The user wants to: ${goalPrompts[goal]}.
+        const analysisPrompt = `You are analyzing a dating app text conversation screenshot.
 
-Return ONLY a JSON object with:
+CRITICAL - UNDERSTAND THE LAYOUT:
+- Messages on the RIGHT side (usually blue/green) = the USER (person asking for help)
+- Messages on the LEFT side (usually gray/white) = the MATCH (person they're talking to)
+- Read the conversation from TOP to BOTTOM (oldest to newest)
+- Find the LAST/MOST RECENT message in the conversation
+
+YOUR TASK:
+1. Read the entire conversation to understand context
+2. Identify what the MATCH said most recently (their last message)
+3. Generate responses for what the USER should say NEXT
+
+The user's goal: ${goalPrompts[goal]}
+
+Return ONLY a JSON object:
 {
-    "vibe": "one word describing the current chat energy (hot/warm/lukewarm/cold/awkward/flirty/friendly)",
-    "theirInterest": "low/medium/high - how interested they seem",
-    "summary": "2-3 sentence breakdown of how the conversation is going and the dynamic",
+    "lastMessage": "what the match's last message said (the message USER needs to reply to)",
+    "vibe": "one word: hot/warm/lukewarm/cold/awkward/flirty/friendly",
+    "theirInterest": "low/medium/high",
+    "summary": "1-2 sentences on how it's going. Who has the upper hand? Is the match engaged?",
     "responses": [
-        {"style": "Smooth", "emoji": "😏", "text": "suggested response"},
-        {"style": "Bold", "emoji": "🔥", "text": "more direct response"},
-        {"style": "Playful", "emoji": "😜", "text": "fun/teasing response"}
+        {"style": "Smooth", "emoji": "😏", "text": "your suggested reply to their last message"},
+        {"style": "Bold", "emoji": "🔥", "text": "a more direct/confident reply"},
+        {"style": "Playful", "emoji": "😜", "text": "a fun/teasing reply"}
     ],
-    "tips": [
-        "specific tip based on this conversation",
-        "another tip",
-        "third tip"
-    ],
-    "avoid": "one thing NOT to do in this situation"
+    "tips": ["tip 1", "tip 2"],
+    "avoid": "one thing NOT to say or do"
 }
 
-Be specific to THIS conversation. Reference what they said. Keep responses short and natural (not essay-length).
+IMPORTANT:
+- Your responses are what the USER should send NEXT as a reply to the match's last message
+- Keep responses short and natural (1-2 sentences max, like real texts)
+- Reference something specific from the match's last message
 Return ONLY the JSON, no other text.`;
 
         const claudeResponse = await anthropic.messages.create({

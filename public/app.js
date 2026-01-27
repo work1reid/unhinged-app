@@ -970,6 +970,15 @@ function displayConvoResults(data) {
     document.getElementById('convo-vibe').textContent = data.vibe || 'Unknown';
     document.getElementById('convo-vibe').className = `convo-vibe-value vibe-${(data.vibe || '').toLowerCase()}`;
 
+    // Last message (what we're replying to)
+    const lastMsgEl = document.getElementById('convo-last-message');
+    if (data.lastMessage) {
+        lastMsgEl.textContent = `"${data.lastMessage}"`;
+        document.getElementById('convo-replying-to').style.display = 'block';
+    } else {
+        document.getElementById('convo-replying-to').style.display = 'none';
+    }
+
     // Summary
     document.getElementById('convo-summary').textContent = data.summary || 'No summary available';
 
