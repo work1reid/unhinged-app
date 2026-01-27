@@ -77,60 +77,51 @@ body {
 
 .login-content {
     width: 100%;
-    max-width: 340px;
+    max-width: 320px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 24px;
+    gap: 32px;
 }
 
 .login-logo {
     text-align: center;
-    margin-bottom: 8px;
 }
 
 .login-logo .logo-icon {
-    font-size: 64px;
+    font-size: 80px;
     display: block;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.08); }
+    50% { transform: scale(1.1); }
 }
 
 .login-logo h1 {
-    font-size: 48px;
+    font-size: 56px;
     font-weight: 900;
     letter-spacing: -3px;
     background: linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #ff9ff3 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    margin-bottom: 8px;
 }
 
 .login-tagline {
-    font-size: 15px;
-    color: rgba(255, 255, 255, 0.5);
-    margin-top: 8px;
+    font-size: 17px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
 }
 
-.login-description {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.4);
-    margin-top: 12px;
-    line-height: 1.5;
-    max-width: 280px;
-}
-
-.login-card {
+.login-actions {
     width: 100%;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .btn-google {
@@ -142,13 +133,13 @@ body {
     background: white;
     border: none;
     color: #333;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
-    padding: 14px 20px;
-    border-radius: 12px;
+    padding: 16px 24px;
+    border-radius: 14px;
     cursor: pointer;
     transition: all 0.2s;
-    min-height: 52px;
+    min-height: 56px;
 }
 
 .btn-google:active {
@@ -156,19 +147,38 @@ body {
     background: #f0f0f0;
 }
 
+.btn-skip {
+    width: 100%;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+    font-weight: 600;
+    padding: 16px 24px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 56px;
+}
+
+.btn-skip:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
 .login-terms {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.35);
     text-align: center;
-    margin-top: 12px;
 }
 
 .login-terms a {
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.5);
     text-decoration: none;
 }
 
-.login-terms a:hover {
+.login-terms a:active {
     text-decoration: underline;
 }
 
@@ -239,44 +249,6 @@ body {
     color: #ff6b6b;
 }
 
-.btn-skip {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 14px;
-    cursor: pointer;
-    padding: 12px;
-}
-
-.btn-skip span {
-    color: rgba(255, 255, 255, 0.3);
-}
-
-.btn-skip:active {
-    color: white;
-}
-
-.login-benefits {
-    text-align: center;
-}
-
-.login-benefits p {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.4);
-    margin-bottom: 8px;
-}
-
-.login-benefits ul {
-    list-style: none;
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-}
-
-.login-benefits li {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
-}
 
 /* ===================
    HOME SCREEN
