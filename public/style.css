@@ -148,6 +148,9 @@ body {
 }
 
 .btn-skip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     background: transparent;
     border: 2px solid rgba(255, 255, 255, 0.2);
@@ -159,6 +162,7 @@ body {
     cursor: pointer;
     transition: all 0.2s;
     min-height: 56px;
+    text-align: center;
 }
 
 .btn-skip:active {
