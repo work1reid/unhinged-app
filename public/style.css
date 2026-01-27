@@ -1179,7 +1179,8 @@ body {
 }
 
 .profile-email {
-    font-size: 15px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
     font-weight: 600;
     color: white;
 }
@@ -1231,26 +1232,32 @@ body {
 }
 
 .card-label {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 15px;
+    font-weight: 500;
     color: rgba(255, 255, 255, 0.9);
 }
 
 .card-value {
-    font-size: 20px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 18px;
     font-weight: 700;
     color: #2ecc71;
 }
 
 .card-title {
     display: block;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 14px;
     font-weight: 600;
     color: white;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .card-desc {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 12px;
+    font-weight: 400;
     color: rgba(255, 255, 255, 0.5);
     margin-bottom: 12px;
 }
@@ -1296,8 +1303,9 @@ body {
 }
 
 .pack-amt {
-    font-size: 28px;
-    font-weight: 800;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 26px;
+    font-weight: 700;
     color: white;
 }
 
@@ -1306,8 +1314,10 @@ body {
 }
 
 .pack-cost {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
     margin-top: 2px;
 }
 
