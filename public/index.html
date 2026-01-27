@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Unhinged">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <title>Unhinged AI - AI Dating Opener Generator | Get Matches to Reply</title>
+    <meta name="description" content="Unhinged AI generates dating app openers that actually get replies. Upload a Tinder, Hinge, or Bumble screenshot and get personalized pickup lines in seconds.">
+    <meta name="keywords" content="unhinged ai, ai dating app, dating opener generator, tinder openers, hinge openers, bumble openers, ai pickup lines, dating app help, get more matches">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://unhingedai.app/">
+    <meta property="og:title" content="Unhinged AI - AI Dating Opener Generator">
+    <meta property="og:description" content="AI generates dating app openers that actually get replies. Upload a screenshot, get personalized pickup lines.">
+    <meta property="og:image" content="https://unhingedai.app/og-image.png">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://unhingedai.app/">
+    <meta name="twitter:title" content="Unhinged AI - AI Dating Opener Generator">
+    <meta name="twitter:description" content="AI generates dating app openers that actually get replies.">
+    <meta name="twitter:image" content="https://unhingedai.app/og-image.png">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://unhingedai.app/">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Age Verification Modal -->
+        <div id="age-modal" class="modal">
+            <div class="modal-content">
+                <span class="modal-icon">🔞</span>
+                <h2>Age Verification Required</h2>
+                <p>This app contains <strong>adult humor</strong> and is intended for users 18+ for entertainment purposes only.</p>
+
+                <div class="age-checkbox">
+                    <label>
+                        <input type="checkbox" id="age-confirm">
+                        <span>I confirm I am at least 18 years old</span>
+                    </label>
+                </div>
+
+                <div class="terms-checkbox">
+                    <label>
+                        <input type="checkbox" id="terms-confirm">
+                        <span>I agree to the <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a></span>
+                    </label>
+                </div>
+
+                <div class="harassment-checkbox">
+                    <label>
+                        <input type="checkbox" id="harassment-confirm">
+                        <span>I will NOT use this to harass anyone</span>
+                    </label>
+                </div>
+
+                <button class="btn-primary" id="age-verify-btn">
+                    Enter Site
+                </button>
+            </div>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <div class="login-content">
+                <div class="login-logo">
+                    <span class="logo-icon">🔥</span>
+                    <h1>UNHINGED</h1>
+                    <p class="login-tagline">AI-powered dating openers that actually work</p>
+                </div>
+
+                <div class="login-card">
+                    <button class="btn-google" id="google-signin-btn">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                            <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.18l-2.909-2.26c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/>
+                            <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                            <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.428 0 9.002 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/>
+                        </svg>
+                        Continue with Google
+                    </button>
+
+                    <div class="auth-divider">
+                        <span>or</span>
+                    </div>
+
+                    <form id="auth-form">
+                        <div class="form-group">
+                            <input type="email" id="auth-email" placeholder="Email" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="password" id="auth-password" placeholder="Password" minlength="6" required>
+                        </div>
+                        <button type="submit" class="btn-primary btn-full">
+                            Sign Up / Log In
+                        </button>
+                    </form>
+
+                    <div id="auth-message" class="auth-message"></div>
+                </div>
+
+                <button class="btn-skip" id="skip-login-btn">
+                    Continue without account <span>(5 free)</span>
+                </button>
+
+                <div class="login-benefits">
+                    <p>With an account you get:</p>
+                    <ul>
+                        <li>10 free generations</li>
+                        <li>Buy credit packs</li>
+                        <li>Sync across devices</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen">
+            <div class="home-header">
+                <div class="home-user">
+                    <div class="home-logo">
+                        <span class="home-logo-icon">🔥</span>
+                        <span class="home-logo-text">UNHINGED</span>
+                    </div>
+                    <span class="home-greeting" id="home-greeting">Hey there!</span>
+                    <span class="home-status" id="home-status"></span>
+                </div>
+                <button class="btn-icon" id="settings-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="home-stats">
+                <div class="stat-card">
+                    <span class="stat-number" id="stat-remaining">5</span>
+                    <span class="stat-label">Remaining</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="stat-credits">0</span>
+                    <span class="stat-label">Credits</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="stat-total">0</span>
+                    <span class="stat-label">Generated</span>
+                </div>
+            </div>
+
+            <div class="home-nav">
+                <button class="nav-card nav-generate" onclick="showGenerate()">
+                    <span class="nav-icon">🔥</span>
+                    <div class="nav-info">
+                        <span class="nav-title">Generate Openers</span>
+                        <span class="nav-desc">Create unhinged pickup lines</span>
+                    </div>
+                    <span class="nav-arrow">›</span>
+                </button>
+
+                <button class="nav-card nav-history" onclick="showHistory()">
+                    <span class="nav-icon">📜</span>
+                    <div class="nav-info">
+                        <span class="nav-title">History</span>
+                        <span class="nav-desc">View your past openers</span>
+                    </div>
+                    <span class="nav-arrow">›</span>
+                </button>
+
+                <button class="nav-card nav-analysis" onclick="showAnalysis()">
+                    <span class="nav-icon">🧠</span>
+                    <div class="nav-info">
+                        <span class="nav-title">Match Insights</span>
+                        <span class="nav-desc">View last profile analysis</span>
+                    </div>
+                    <span class="nav-arrow">›</span>
+                </button>
+            </div>
+
+            <div class="home-cta">
+                <button class="btn-primary btn-large" onclick="showGenerate()">
+                    Generate Opener 🔥
+                </button>
+            </div>
+
+            <p class="home-disclaimer">For entertainment only. Don't be a creep.</p>
+        </div>
+
+        <!-- Generate Screen -->
+        <div id="generate-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showHome()">← Back</button>
+                <span class="screen-title">Generate</span>
+                <span class="usage-badge" id="generate-usage">5 left</span>
+            </div>
+
+            <h2>Drop their profile</h2>
+            <p class="subtitle">Screenshot from Hinge, Bumble, Tinder...</p>
+
+            <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+                <div class="upload-content">
+                    <span class="upload-icon">📸</span>
+                    <p>Tap to upload</p>
+                    <p class="upload-hint">or drag and drop</p>
+                </div>
+                <img id="preview-image" class="preview-image" style="display: none;">
+            </div>
+
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" onchange="handleFileSelect(event)" style="display: none;">
+
+            <div id="generate-section" style="display: none;">
+                <div class="mode-selector">
+                    <h3>Pick your vibe</h3>
+                    <div class="modes">
+                        <label class="mode-option">
+                            <input type="radio" name="mode" value="chaotic" checked>
+                            <span class="mode-card">
+                                <span class="mode-emoji">🌀</span>
+                                <span class="mode-name">Chaotic</span>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="mode" value="flirty">
+                            <span class="mode-card">
+                                <span class="mode-emoji">😏</span>
+                                <span class="mode-name">Flirty</span>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="mode" value="unhinged">
+                            <span class="mode-card">
+                                <span class="mode-emoji">🔥</span>
+                                <span class="mode-name">Unhinged</span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="modes modes-row-2">
+                        <label class="mode-option">
+                            <input type="radio" name="mode" value="mysterious">
+                            <span class="mode-card">
+                                <span class="mode-emoji">🎭</span>
+                                <span class="mode-name">Mysterious</span>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="mode" value="dadjoke">
+                            <span class="mode-card">
+                                <span class="mode-emoji">👴</span>
+                                <span class="mode-name">Dad Joke</span>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="mode" value="poetic">
+                            <span class="mode-card">
+                                <span class="mode-emoji">🎨</span>
+                                <span class="mode-name">Poetic</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn-primary btn-full" onclick="generateOpeners()">
+                    Generate Openers 🔥
+                </button>
+
+                <button class="btn-credits" id="buy-credits-btn" onclick="buyCredits()" style="display: none;">
+                    💳 Get 25 Credits for $2.99
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="screen">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <h2>Analyzing their vibe...</h2>
+                <p class="loading-text" id="loading-text">Reading their profile...</p>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showHome()">← Home</button>
+                <span class="screen-title">Results</span>
+                <button class="back-btn" onclick="showGenerate()">New</button>
+            </div>
+
+            <div class="results-header">
+                <span class="results-label">Openers for</span>
+                <span class="match-name" id="match-name">Sarah, 24</span>
+            </div>
+
+            <div class="openers-list" id="openers-list"></div>
+
+            <div class="feedback-section">
+                <p class="feedback-prompt">How'd it go?</p>
+                <div class="feedback-buttons">
+                    <button class="feedback-btn" onclick="recordFeedback('sent')">📤 Sent</button>
+                    <button class="feedback-btn success" onclick="recordFeedback('replied')">💬 Reply!</button>
+                    <button class="feedback-btn fire" onclick="recordFeedback('date')">🔥 Date!</button>
+                    <button class="feedback-btn fail" onclick="recordFeedback('blocked')">💀 Blocked</button>
+                </div>
+            </div>
+
+            <button class="btn-insights" id="view-insights-btn" onclick="showAnalysis()" style="display: none;">
+                🧠 View Match Insights
+            </button>
+
+            <div class="results-actions">
+                <button class="btn-secondary" onclick="generateOpeners()">🔄 Regenerate</button>
+                <button class="btn-primary" onclick="shareResults()">📤 Share</button>
+            </div>
+        </div>
+
+        <!-- History Screen -->
+        <div id="history-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showHome()">← Back</button>
+                <span class="screen-title">History</span>
+                <span></span>
+            </div>
+
+            <div id="history-list" class="history-list">
+                <div class="empty-state" id="history-empty">
+                    <span class="empty-icon">📜</span>
+                    <p>No history yet</p>
+                    <span class="empty-hint">Your generated openers will appear here</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Screen -->
+        <div id="analysis-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="goBackFromAnalysis()">← Back</button>
+                <span class="screen-title">Match Insights</span>
+                <span></span>
+            </div>
+
+            <div class="analysis-content" id="analysis-content">
+                <div class="empty-state">
+                    <span class="empty-icon">🧠</span>
+                    <p>No Analysis Yet</p>
+                    <span class="empty-hint">Generate openers to see match insights</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content settings-modal-content">
+                <button class="close-modal-btn" id="close-settings-modal">&times;</button>
+                <h2>Settings</h2>
+
+                <div class="settings-section">
+                    <div id="username-section" class="username-section" style="display: none;">
+                        <label class="settings-label">Username</label>
+                        <div class="username-input-row">
+                            <input type="text" id="settings-username" placeholder="Enter username" maxlength="20">
+                            <button class="btn-save" id="save-username-btn">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-user">
+                        <label class="settings-label">Email</label>
+                        <span class="settings-email" id="settings-email">Not signed in</span>
+                    </div>
+
+                    <button class="btn-secondary btn-full" id="settings-signout-btn" style="display: none;">
+                        Sign Out
+                    </button>
+
+                    <button class="btn-primary btn-full" id="settings-signin-btn">
+                        Sign In for More
+                    </button>
+
+                    <button class="btn-credits btn-full" id="settings-buy-credits-btn" onclick="buyCredits()" style="display: none;">
+                        💳 Buy 25 Credits - $2.99
+                    </button>
+                </div>
+
+                <div class="credits-info" id="settings-credits-info" style="display: none;">
+                    <span class="credits-label">Your Credits:</span>
+                    <span class="credits-value" id="settings-credits-value">0</span>
+                </div>
+
+                <div class="settings-links">
+                    <a href="/terms.html">Terms of Service</a>
+                    <a href="/privacy.html">Privacy Policy</a>
+                </div>
+
+                <p class="settings-version">Unhinged v1.0</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
