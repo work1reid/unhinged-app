@@ -218,7 +218,7 @@ async function addCredits(amount) {
 }
 
 const SIGNUP_BONUS_CREDITS = 5;
-const WEEKLY_BONUS_CREDITS = 5;
+const WEEKLY_BONUS_CREDITS = 2;
 
 async function giveSignupBonus() {
     if (!currentUser || !supabaseClient) return;
@@ -2111,6 +2111,29 @@ if (uploadZone) {
 }
 
 // ===================
+// UNHINGED DISCLAIMER
+// ===================
+let unhingedDisclaimerAccepted = false;
+
+function showUnhingedDisclaimer() {
+    document.getElementById('unhinged-disclaimer-modal').classList.remove('hidden');
+}
+
+function acceptUnhingedDisclaimer() {
+    unhingedDisclaimerAccepted = true;
+    document.getElementById('unhinged-disclaimer-modal').classList.add('hidden');
+    // Continue with generation
+    generateOpenersAfterDisclaimer();
+}
+
+function cancelUnhingedMode() {
+    document.getElementById('unhinged-disclaimer-modal').classList.add('hidden');
+    // Select a different mode (default to chaotic)
+    const chaoticRadio = document.querySelector('input[name="mode"][value="chaotic"]');
+    if (chaoticRadio) chaoticRadio.checked = true;
+}
+
+// ===================
 // GENERATE
 // ===================
 async function generateOpeners() {
@@ -2127,6 +2150,18 @@ async function generateOpeners() {
         return;
     }
 
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+
+    // Check if unhinged mode and disclaimer not accepted
+    if (mode === 'unhinged' && !unhingedDisclaimerAccepted) {
+        showUnhingedDisclaimer();
+        return;
+    }
+
+    generateOpenersAfterDisclaimer();
+}
+
+async function generateOpenersAfterDisclaimer() {
     const mode = document.querySelector('input[name="mode"]:checked').value;
     showLoading();
 
@@ -2325,7 +2360,8 @@ function setupListeners() {
         { id: 'credits-breakdown-modal', close: () => closeBreakdown('credits') },
         { id: 'generated-breakdown-modal', close: () => closeBreakdown('generated') },
         { id: 'success-breakdown-modal', close: () => closeBreakdown('success') },
-        { id: 'feedback-prompt-modal', close: closeFeedbackPrompt }
+        { id: 'feedback-prompt-modal', close: closeFeedbackPrompt },
+        { id: 'unhinged-disclaimer-modal', close: cancelUnhingedMode }
     ];
 
     modals.forEach(({ id, close }) => {

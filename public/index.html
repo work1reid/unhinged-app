@@ -531,6 +531,22 @@
                 <button class="btn-secondary btn-full" onclick="skipFeedbackPrompt()">Skip for now</button>
             </div>
         </div>
+
+        <!-- Unhinged Mode Disclaimer Modal -->
+        <div id="unhinged-disclaimer-modal" class="modal hidden">
+            <div class="modal-content disclaimer-modal-content">
+                <span class="disclaimer-icon">⚠️</span>
+                <h2>Unhinged Mode</h2>
+                <p class="disclaimer-text">This mode generates edgy, provocative content for <strong>entertainment only</strong>.</p>
+                <ul class="disclaimer-list">
+                    <li>Don't send anything that could be harassment</li>
+                    <li>You're responsible for what you send</li>
+                    <li>Be respectful - read the room</li>
+                </ul>
+                <button class="btn-primary btn-full" onclick="acceptUnhingedDisclaimer()">I understand</button>
+                <button class="btn-text" onclick="cancelUnhingedMode()">Use a different mode</button>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>

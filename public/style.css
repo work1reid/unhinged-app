@@ -2580,6 +2580,75 @@ body {
 }
 
 /* ===================
+   DISCLAIMER MODAL
+   =================== */
+
+.disclaimer-modal-content {
+    text-align: center;
+    padding: 28px 24px;
+}
+
+.disclaimer-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.disclaimer-modal-content h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+    color: #ff6b6b;
+}
+
+.disclaimer-text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.disclaimer-list {
+    text-align: left;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.2);
+    border-radius: 12px;
+    padding: 14px 18px;
+}
+
+.disclaimer-list li {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 6px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.disclaimer-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #ff6b6b;
+}
+
+.btn-text {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+    padding: 12px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.btn-text:active {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ===================
    REDUCED MOTION
    =================== */
 
