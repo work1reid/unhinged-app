@@ -932,6 +932,7 @@ async function showSuccessBreakdown() {
 // ===================
 let pendingFeedbackItems = [];
 let currentFeedbackIndex = 0;
+let skipFeedbackCheck = false;
 
 async function showAnalytics() {
     if (!currentUser) {
@@ -939,15 +940,19 @@ async function showAnalytics() {
         return;
     }
 
-    // Check for unanswered feedback first
-    const hasUnanswered = await checkUnansweredFeedback();
-    if (hasUnanswered) {
-        showFeedbackPrompt();
-    } else {
-        const modal = document.getElementById('analytics-modal');
-        modal.classList.remove('hidden');
-        await loadAnalytics();
+    // Check for unanswered feedback first (unless we just came from feedback prompt)
+    if (!skipFeedbackCheck) {
+        const hasUnanswered = await checkUnansweredFeedback();
+        if (hasUnanswered) {
+            showFeedbackPrompt();
+            return;
+        }
     }
+
+    skipFeedbackCheck = false;
+    const modal = document.getElementById('analytics-modal');
+    modal.classList.remove('hidden');
+    await loadAnalytics();
 }
 
 async function checkUnansweredFeedback() {
@@ -983,8 +988,9 @@ function showFeedbackPrompt() {
 function renderFeedbackPrompt() {
     const container = document.getElementById('feedback-prompt-list');
 
-    if (currentFeedbackIndex >= pendingFeedbackItems.length) {
-        // All done, show analytics
+    if (pendingFeedbackItems.length === 0 || currentFeedbackIndex >= pendingFeedbackItems.length) {
+        // All done, show analytics (skip the feedback check since we just did it)
+        skipFeedbackCheck = true;
         closeFeedbackPrompt();
         const modal = document.getElementById('analytics-modal');
         modal.classList.remove('hidden');
@@ -1026,21 +1032,31 @@ function renderFeedbackPrompt() {
 
 async function submitPromptFeedback(generationId, result) {
     if (!supabaseClient || !generationId) {
-        console.error('Missing supabase client or generation ID');
+        console.error('Missing supabase client or generation ID:', { supabaseClient: !!supabaseClient, generationId });
         currentFeedbackIndex++;
         renderFeedbackPrompt();
         return;
     }
 
+    console.log('Saving feedback:', { generationId, result });
+
     try {
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
             .from('generations')
             .update({ feedback: result, feedback_at: new Date().toISOString() })
-            .eq('id', generationId);
+            .eq('id', generationId)
+            .eq('user_id', currentUser.id)
+            .select();
+
+        console.log('Feedback save response:', { data, error });
 
         if (error) {
             console.error('Feedback save error:', error);
             showToast('Failed to save');
+        } else if (!data || data.length === 0) {
+            console.error('No rows updated - ID may not exist or RLS blocking');
+            showToast('Failed to save');
+            currentFeedbackIndex++;
         } else {
             const msgs = { sent: 'Saved!', replied: '💬 Nice!', date: '🔥 Legend!', blocked: 'Noted 💀' };
             showToast(msgs[result] || 'Saved!');
@@ -1048,13 +1064,16 @@ async function submitPromptFeedback(generationId, result) {
             // Invalidate analytics cache and update stats
             analyticsCache = null;
             await updateStats();
+
+            // Move to next item
+            currentFeedbackIndex++;
         }
     } catch (e) {
-        console.error('Feedback save error:', e);
+        console.error('Feedback save exception:', e);
         showToast('Failed to save');
+        currentFeedbackIndex++;
     }
 
-    currentFeedbackIndex++;
     renderFeedbackPrompt();
 }
 
@@ -1072,6 +1091,7 @@ function closeFeedbackPrompt() {
 }
 
 async function skipFeedbackPrompt() {
+    skipFeedbackCheck = true;
     closeFeedbackPrompt();
     const modal = document.getElementById('analytics-modal');
     modal.classList.remove('hidden');
