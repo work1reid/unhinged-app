@@ -171,6 +171,13 @@ body {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+.login-bonus {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    margin-top: 4px;
+}
+
 .login-terms {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.35);

@@ -15,8 +15,8 @@ let analyticsCache = null;
 // ===================
 // CONSTANTS
 // ===================
-const FREE_LIMIT_ANONYMOUS = 3;
-const FREE_LIMIT_AUTHENTICATED = 10;
+const FREE_LIMIT_ANONYMOUS = 0;
+const FREE_LIMIT_AUTHENTICATED = 0;
 const COOLDOWN_DAYS = 2; // Days until free generations reset
 const CREDIT_PACK_SIZE = 30;
 const CREDIT_PACK_PRICE = 7.95;
@@ -55,6 +55,8 @@ async function initSupabase() {
             currentUser = session?.user || null;
 
             if (event === 'SIGNED_IN') {
+                // Give signup bonus first (only for new users)
+                await giveSignupBonus();
                 // Load username, credits, subscription and migrate history
                 await loadUsername();
                 await loadCredits();
@@ -210,6 +212,57 @@ async function addCredits(amount) {
         console.error('Add credits failed:', e);
     }
     return false;
+}
+
+const SIGNUP_BONUS_CREDITS = 5;
+
+async function giveSignupBonus() {
+    if (!currentUser || !supabaseClient) return;
+
+    try {
+        // Check if user already has a credits record (meaning they already got bonus)
+        const { data: existing } = await supabaseClient
+            .from('credits')
+            .select('id')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (existing) {
+            // Already has credits record, no bonus
+            return;
+        }
+
+        // New user - give signup bonus
+        const { error } = await supabaseClient
+            .from('credits')
+            .insert({
+                id: currentUser.id,
+                balance: SIGNUP_BONUS_CREDITS,
+                total_purchased: 0,
+                updated_at: new Date().toISOString()
+            });
+
+        if (!error) {
+            purchasedCredits = SIGNUP_BONUS_CREDITS;
+            showToast(`🎁 ${SIGNUP_BONUS_CREDITS} free credits added!`);
+        }
+    } catch (e) {
+        // Record doesn't exist, give bonus
+        try {
+            await supabaseClient
+                .from('credits')
+                .insert({
+                    id: currentUser.id,
+                    balance: SIGNUP_BONUS_CREDITS,
+                    total_purchased: 0,
+                    updated_at: new Date().toISOString()
+                });
+            purchasedCredits = SIGNUP_BONUS_CREDITS;
+            showToast(`🎁 ${SIGNUP_BONUS_CREDITS} free credits added!`);
+        } catch (e2) {
+            console.error('Signup bonus failed:', e2);
+        }
+    }
 }
 
 async function useCredit() {
@@ -2197,7 +2250,6 @@ function showToast(msg) {
 function setupListeners() {
     // Login
     document.getElementById('google-signin-btn')?.addEventListener('click', signInWithGoogle);
-    document.getElementById('skip-login-btn')?.addEventListener('click', showHome);
 
     // Settings
     document.getElementById('settings-btn')?.addEventListener('click', showSettings);
