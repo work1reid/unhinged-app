@@ -47,6 +47,7 @@ async function initSupabase() {
             currentUser = session.user;
             await loadUsername();
             await loadCredits();
+            await checkWeeklyBonus();
             await loadSubscription();
         }
 
@@ -60,6 +61,8 @@ async function initSupabase() {
                 // Load username, credits, subscription and migrate history
                 await loadUsername();
                 await loadCredits();
+                // Check for weekly Monday bonus
+                await checkWeeklyBonus();
                 await loadSubscription();
                 await migrateLocalHistoryToCloud();
                 await processReferralOnSignup();
@@ -215,6 +218,7 @@ async function addCredits(amount) {
 }
 
 const SIGNUP_BONUS_CREDITS = 5;
+const WEEKLY_BONUS_CREDITS = 5;
 
 async function giveSignupBonus() {
     if (!currentUser || !supabaseClient) return;
@@ -262,6 +266,43 @@ async function giveSignupBonus() {
         } catch (e2) {
             console.error('Signup bonus failed:', e2);
         }
+    }
+}
+
+function getMondayOfWeek(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Sunday
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+async function checkWeeklyBonus() {
+    if (!currentUser || !supabaseClient) return;
+
+    try {
+        // Get last weekly bonus date from localStorage (keyed by user)
+        const lastBonusKey = `weekly_bonus_${currentUser.id}`;
+        const lastBonusStr = localStorage.getItem(lastBonusKey);
+        const lastBonus = lastBonusStr ? new Date(lastBonusStr) : null;
+
+        const now = new Date();
+        const thisMonday = getMondayOfWeek(now);
+
+        // Check if we've already given bonus this week
+        if (lastBonus && lastBonus >= thisMonday) {
+            return; // Already got this week's bonus
+        }
+
+        // Give weekly bonus
+        const success = await addCredits(WEEKLY_BONUS_CREDITS);
+        if (success) {
+            localStorage.setItem(lastBonusKey, now.toISOString());
+            showToast(`🎁 Weekly bonus: +${WEEKLY_BONUS_CREDITS} credits!`);
+        }
+    } catch (e) {
+        console.error('Weekly bonus check failed:', e);
     }
 }
 
