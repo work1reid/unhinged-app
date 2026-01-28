@@ -282,11 +282,14 @@ async function checkWeeklyBonus() {
     if (!currentUser || !supabaseClient) return;
 
     try {
-        // Get last weekly bonus date from localStorage (keyed by user)
-        const lastBonusKey = `weekly_bonus_${currentUser.id}`;
-        const lastBonusStr = localStorage.getItem(lastBonusKey);
-        const lastBonus = lastBonusStr ? new Date(lastBonusStr) : null;
+        // Get last weekly bonus date from database
+        const { data } = await supabaseClient
+            .from('credits')
+            .select('last_weekly_bonus')
+            .eq('id', currentUser.id)
+            .single();
 
+        const lastBonus = data?.last_weekly_bonus ? new Date(data.last_weekly_bonus) : null;
         const now = new Date();
         const thisMonday = getMondayOfWeek(now);
 
@@ -298,7 +301,12 @@ async function checkWeeklyBonus() {
         // Give weekly bonus
         const success = await addCredits(WEEKLY_BONUS_CREDITS);
         if (success) {
-            localStorage.setItem(lastBonusKey, now.toISOString());
+            // Update last_weekly_bonus in database
+            await supabaseClient
+                .from('credits')
+                .update({ last_weekly_bonus: now.toISOString() })
+                .eq('id', currentUser.id);
+
             showToast(`🎁 Weekly bonus: +${WEEKLY_BONUS_CREDITS} credits!`);
         }
     } catch (e) {

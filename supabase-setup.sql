@@ -43,6 +43,14 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'one_time';
 
 
 -- =====================
+-- UPDATE CREDITS TABLE
+-- =====================
+-- Add last_weekly_bonus column for tracking Monday bonuses
+
+ALTER TABLE credits ADD COLUMN IF NOT EXISTS last_weekly_bonus TIMESTAMPTZ;
+
+
+-- =====================
 -- EXISTING TABLES (for reference)
 -- =====================
 
@@ -51,6 +59,7 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'one_time';
 --     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
 --     balance INTEGER DEFAULT 0,
 --     total_purchased INTEGER DEFAULT 0,
+--     last_weekly_bonus TIMESTAMPTZ,
 --     updated_at TIMESTAMPTZ DEFAULT NOW()
 -- );
 
