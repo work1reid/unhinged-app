@@ -708,6 +708,18 @@ body {
     color: rgba(255, 255, 255, 0.9);
 }
 
+.mode-rate {
+    font-size: 10px;
+    font-weight: 600;
+    color: #2ecc71;
+    margin-top: 2px;
+    min-height: 14px;
+}
+
+.mode-rate.best {
+    color: #feca57;
+}
+
 /* ===================
    LOADING SCREEN
    =================== */

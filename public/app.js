@@ -1244,6 +1244,7 @@ async function showHome() {
 
 async function showGenerate() {
     await updateGenerateUsage();
+    await loadModeSuccessRates();
     showScreen('generate-screen');
 }
 
@@ -2111,6 +2112,87 @@ if (uploadZone) {
 }
 
 // ===================
+// MODE SUCCESS RATES
+// ===================
+let modeSuccessRates = {};
+
+async function loadModeSuccessRates() {
+    if (!supabaseClient) return;
+
+    try {
+        // Get all generations with feedback (aggregate across all users for better data)
+        const { data: generations } = await supabaseClient
+            .from('generations')
+            .select('mode, feedback')
+            .not('feedback', 'is', null);
+
+        if (!generations || generations.length === 0) return;
+
+        // Calculate success rates per mode
+        const modeStats = {};
+        const modes = ['chaotic', 'flirty', 'unhinged', 'mysterious', 'dadjoke', 'poetic'];
+
+        modes.forEach(mode => {
+            modeStats[mode] = { total: 0, success: 0 };
+        });
+
+        generations.forEach(gen => {
+            const mode = gen.mode || 'chaotic';
+            if (modeStats[mode]) {
+                modeStats[mode].total++;
+                if (gen.feedback === 'replied' || gen.feedback === 'date') {
+                    modeStats[mode].success++;
+                }
+            }
+        });
+
+        // Calculate rates and find best mode
+        let bestMode = null;
+        let bestRate = 0;
+
+        modes.forEach(mode => {
+            const stats = modeStats[mode];
+            if (stats.total >= 3) { // Need at least 3 data points
+                const rate = Math.round((stats.success / stats.total) * 100);
+                modeSuccessRates[mode] = rate;
+
+                if (rate > bestRate) {
+                    bestRate = rate;
+                    bestMode = mode;
+                }
+            }
+        });
+
+        // Update UI
+        displayModeSuccessRates(bestMode);
+    } catch (e) {
+        console.error('Failed to load mode success rates:', e);
+    }
+}
+
+function displayModeSuccessRates(bestMode) {
+    const modes = ['chaotic', 'flirty', 'unhinged', 'mysterious', 'dadjoke', 'poetic'];
+
+    modes.forEach(mode => {
+        const el = document.getElementById(`rate-${mode}`);
+        if (!el) return;
+
+        const rate = modeSuccessRates[mode];
+        if (rate !== undefined) {
+            if (mode === bestMode && rate > 0) {
+                el.textContent = `🏆 ${rate}%`;
+                el.classList.add('best');
+            } else {
+                el.textContent = `${rate}%`;
+                el.classList.remove('best');
+            }
+        } else {
+            el.textContent = '';
+        }
+    });
+}
+
+// ===================
 // UNHINGED DISCLAIMER
 // ===================
 let unhingedDisclaimerAccepted = false;
@@ -2265,8 +2347,9 @@ async function recordFeedback(result) {
     // Update all stats across the app
     await updateStats();
 
-    // Invalidate analytics cache so next view is fresh
+    // Invalidate caches so next view is fresh
     analyticsCache = null;
+    modeSuccessRates = {};
 }
 
 async function shareResults() {
