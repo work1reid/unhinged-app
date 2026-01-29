@@ -142,9 +142,15 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     stripe_subscription_id TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL DEFAULT 'active',
     credits_per_period INTEGER NOT NULL DEFAULT 25,
+    weekly_usage INTEGER DEFAULT 0,
+    weekly_reset TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add columns if they don't exist (safe for existing tables)
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS weekly_usage INTEGER DEFAULT 0;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS weekly_reset TIMESTAMPTZ;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
@@ -158,6 +164,10 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'subscriptions' AND policyname = 'Users can read own subscriptions') THEN
         CREATE POLICY "Users can read own subscriptions" ON subscriptions FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'subscriptions' AND policyname = 'Users can update own subscription usage') THEN
+        CREATE POLICY "Users can update own subscription usage" ON subscriptions FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'subscriptions' AND policyname = 'Service role can manage subscriptions') THEN

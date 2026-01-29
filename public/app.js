@@ -418,6 +418,7 @@ let currentSubscription = null;
 async function loadSubscription() {
     if (!currentUser || !supabaseClient) {
         currentSubscription = null;
+        cachedSubWeeklyUsage = null;
         return null;
     }
 
@@ -431,12 +432,14 @@ async function loadSubscription() {
 
         if (data) {
             currentSubscription = data;
+            cachedSubWeeklyUsage = null; // Reset cache to load fresh from subscription
             return data;
         }
     } catch (e) {
         console.log('No active subscription');
     }
     currentSubscription = null;
+    cachedSubWeeklyUsage = null;
     return null;
 }
 
@@ -1729,26 +1732,71 @@ async function getRemainingGenerations() {
 
 const SUBSCRIBER_WEEKLY_CAP = 150;
 
-function getSubscriberWeeklyUsage() {
-    const data = getUsageData();
-    const thisMonday = getMondayOfWeek(new Date());
-    const lastReset = data.subWeeklyReset ? new Date(data.subWeeklyReset) : null;
+// Cache for subscriber usage (synced to cloud)
+let cachedSubWeeklyUsage = null;
 
-    // Reset if new week
+function getSubscriberWeeklyUsage() {
+    if (!currentSubscription) return 0;
+
+    const thisMonday = getMondayOfWeek(new Date());
+    const lastReset = currentSubscription.weekly_reset ? new Date(currentSubscription.weekly_reset) : null;
+
+    // If new week, usage should be 0 (will be reset on next increment)
     if (!lastReset || lastReset < thisMonday) {
-        data.subWeeklyUsage = 0;
-        data.subWeeklyReset = thisMonday.toISOString();
-        saveUsageData(data);
+        cachedSubWeeklyUsage = 0;
+        return 0;
     }
 
-    return data.subWeeklyUsage || 0;
+    // Use cached value if available, otherwise use subscription data
+    if (cachedSubWeeklyUsage !== null) {
+        return cachedSubWeeklyUsage;
+    }
+
+    cachedSubWeeklyUsage = currentSubscription.weekly_usage || 0;
+    return cachedSubWeeklyUsage;
 }
 
-function incrementSubscriberUsage() {
+async function incrementSubscriberUsage() {
+    if (!currentSubscription || !supabaseClient) return;
+
+    const thisMonday = getMondayOfWeek(new Date());
+    const lastReset = currentSubscription.weekly_reset ? new Date(currentSubscription.weekly_reset) : null;
+    const isNewWeek = !lastReset || lastReset < thisMonday;
+
+    // Calculate new usage
+    const newUsage = isNewWeek ? 1 : (currentSubscription.weekly_usage || 0) + 1;
+
+    // Update cache immediately for responsive UI
+    cachedSubWeeklyUsage = newUsage;
+
+    // Update local total
     const data = getUsageData();
-    data.subWeeklyUsage = (data.subWeeklyUsage || 0) + 1;
     data.total = (data.total || 0) + 1;
     saveUsageData(data);
+
+    // Sync to cloud
+    try {
+        const { error } = await supabaseClient
+            .from('subscriptions')
+            .update({
+                weekly_usage: newUsage,
+                weekly_reset: isNewWeek ? thisMonday.toISOString() : currentSubscription.weekly_reset,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', currentSubscription.id);
+
+        if (!error) {
+            // Update local subscription object
+            currentSubscription.weekly_usage = newUsage;
+            if (isNewWeek) {
+                currentSubscription.weekly_reset = thisMonday.toISOString();
+            }
+        } else {
+            console.error('Failed to sync subscriber usage:', error);
+        }
+    } catch (e) {
+        console.error('Failed to sync subscriber usage:', e);
+    }
 }
 
 async function canGenerate() {
