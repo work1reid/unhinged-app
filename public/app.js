@@ -1387,6 +1387,8 @@ function showHistory() {
 let currentLeaderboardCategory = 'generations';
 
 function showLeaderboard() {
+    // Close any open modals
+    document.getElementById('settings-modal')?.classList.add('hidden');
     loadLeaderboard();
     loadMyRank();
     showScreen('leaderboard-screen');
@@ -1483,6 +1485,8 @@ async function loadMyRank() {
 let userReferralInfo = null;
 
 function showReferrals() {
+    // Close settings modal if open
+    document.getElementById('settings-modal')?.classList.add('hidden');
     loadReferralInfo();
     showScreen('referrals-screen');
 }
