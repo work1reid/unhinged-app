@@ -2923,7 +2923,220 @@ function showAdmin() {
         return;
     }
     showScreen('admin-screen');
-    loadAdminUsers();
+    switchAdminTab('dashboard');
+}
+
+function switchAdminTab(tab) {
+    // Update tab buttons
+    document.querySelectorAll('.admin-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    // Update tab content
+    document.querySelectorAll('.admin-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    document.getElementById(`admin-tab-${tab}`)?.classList.remove('hidden');
+
+    // Load data for the tab
+    switch(tab) {
+        case 'dashboard':
+            loadDashboardStats();
+            break;
+        case 'users':
+            loadAdminUsers();
+            break;
+        case 'activity':
+            loadActivity();
+            break;
+        case 'payments':
+            loadPayments();
+            break;
+        case 'subs':
+            loadSubscriptions();
+            break;
+    }
+}
+
+async function loadDashboardStats() {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/stats', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load stats');
+
+        const stats = await response.json();
+
+        document.getElementById('dash-users').textContent = stats.totalUsers || 0;
+        document.getElementById('dash-active').textContent = stats.activeToday || 0;
+        document.getElementById('dash-revenue').textContent = `$${(stats.totalRevenue || 0).toFixed(0)}`;
+        document.getElementById('dash-subs').textContent = stats.activeSubscriptions || 0;
+        document.getElementById('dash-gens').textContent = stats.totalGenerations || 0;
+        document.getElementById('dash-credits').textContent = stats.totalCreditsInCirculation || 0;
+    } catch (e) {
+        console.error('Load dashboard stats error:', e);
+    }
+}
+
+async function loadActivity() {
+    const container = document.getElementById('admin-activity-list');
+    container.innerHTML = '<div class="analytics-loading">Loading activity...</div>';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/activity', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load activity');
+
+        const data = await response.json();
+
+        if (data.activity.length === 0) {
+            container.innerHTML = '<p class="breakdown-empty">No recent activity</p>';
+            return;
+        }
+
+        container.innerHTML = data.activity.map(item => {
+            const time = new Date(item.created_at).toLocaleString();
+            if (item.type === 'generation') {
+                return `
+                    <div class="admin-activity-item">
+                        <div class="activity-icon">🎯</div>
+                        <div class="activity-details">
+                            <span class="activity-email">${item.email}</span>
+                            <span class="activity-desc">Generated for "${item.match_name || 'Unknown'}"</span>
+                            <span class="activity-time">${time}</span>
+                        </div>
+                    </div>
+                `;
+            } else if (item.type === 'payment') {
+                return `
+                    <div class="admin-activity-item payment">
+                        <div class="activity-icon">💰</div>
+                        <div class="activity-details">
+                            <span class="activity-email">${item.email}</span>
+                            <span class="activity-desc">Paid $${(item.amount / 100).toFixed(2)} for ${item.credits} credits</span>
+                            <span class="activity-time">${time}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            return '';
+        }).join('');
+    } catch (e) {
+        console.error('Load activity error:', e);
+        container.innerHTML = '<p class="breakdown-empty">Failed to load activity</p>';
+    }
+}
+
+async function loadPayments() {
+    const container = document.getElementById('admin-payments-list');
+    container.innerHTML = '<div class="analytics-loading">Loading payments...</div>';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/payments', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load payments');
+
+        const data = await response.json();
+
+        if (data.payments.length === 0) {
+            container.innerHTML = '<p class="breakdown-empty">No payments yet</p>';
+            return;
+        }
+
+        container.innerHTML = data.payments.map(payment => {
+            const date = new Date(payment.created_at).toLocaleDateString();
+            return `
+                <div class="admin-payment-item">
+                    <div class="payment-info">
+                        <span class="payment-email">${payment.email}</span>
+                        <span class="payment-date">${date}</span>
+                    </div>
+                    <div class="payment-details">
+                        <span class="payment-amount">$${(payment.amount / 100).toFixed(2)}</span>
+                        <span class="payment-credits">+${payment.credits} credits</span>
+                        <span class="payment-type">${payment.type || 'one_time'}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Load payments error:', e);
+        container.innerHTML = '<p class="breakdown-empty">Failed to load payments</p>';
+    }
+}
+
+async function loadSubscriptions() {
+    const container = document.getElementById('admin-subs-list');
+    container.innerHTML = '<div class="analytics-loading">Loading subscriptions...</div>';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/subscriptions', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load subscriptions');
+
+        const data = await response.json();
+
+        if (data.subscriptions.length === 0) {
+            container.innerHTML = '<p class="breakdown-empty">No subscriptions yet</p>';
+            return;
+        }
+
+        container.innerHTML = data.subscriptions.map(sub => {
+            const started = new Date(sub.created_at).toLocaleDateString();
+            const statusClass = sub.status === 'active' ? 'active' : 'inactive';
+            return `
+                <div class="admin-sub-item">
+                    <div class="sub-info">
+                        <span class="sub-email">${sub.email}</span>
+                        <span class="sub-started">Since ${started}</span>
+                    </div>
+                    <div class="sub-details">
+                        <span class="sub-status ${statusClass}">${sub.status}</span>
+                        <span class="sub-usage">${sub.weekly_usage || 0}/${sub.credits_per_period} used</span>
+                        ${sub.status === 'active' ? `<button class="sub-cancel-btn" onclick="adminCancelSubscription('${sub.id}', '${sub.stripe_subscription_id}')">Cancel</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Load subscriptions error:', e);
+        container.innerHTML = '<p class="breakdown-empty">Failed to load subscriptions</p>';
+    }
+}
+
+async function adminCancelSubscription(subId, stripeSubId) {
+    if (!confirm('Cancel this subscription? The user will lose their weekly credits.')) return;
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/cancel-subscription', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ subscriptionId: stripeSubId })
+        });
+
+        if (!response.ok) throw new Error('Failed to cancel');
+
+        showToast('Subscription cancelled');
+        loadSubscriptions();
+    } catch (e) {
+        console.error('Cancel subscription error:', e);
+        showToast('Failed to cancel subscription');
+    }
 }
 
 async function loadAdminUsers() {
@@ -3005,18 +3218,23 @@ function openAddCredits(userId, email) {
     selectedUserId = userId;
     document.getElementById('admin-credits-email').textContent = email;
     document.getElementById('admin-credits-amount').value = 5;
+    document.getElementById('admin-credits-amount').removeAttribute('max');
     document.getElementById('admin-credits-reason').value = '';
     document.getElementById('admin-credits-modal').classList.remove('hidden');
+    document.getElementById('admin-credits-modal').dataset.mode = 'add';
 }
 
 function closeAdminCreditsModal() {
     document.getElementById('admin-credits-modal').classList.add('hidden');
+    document.getElementById('admin-credits-modal').dataset.mode = '';
     selectedUserId = null;
 }
 
 async function submitAdminCredits() {
     if (!selectedUserId) return;
 
+    const modal = document.getElementById('admin-credits-modal');
+    const isRemove = modal.dataset.mode === 'remove';
     const amount = parseInt(document.getElementById('admin-credits-amount').value);
     const reason = document.getElementById('admin-credits-reason').value.trim();
 
@@ -3027,34 +3245,147 @@ async function submitAdminCredits() {
 
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
-        const response = await fetch('/api/admin/add-credits', {
+        const response = await fetch('/api/admin/modify-credits', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`
             },
-            body: JSON.stringify({ userId: selectedUserId, amount, reason })
+            body: JSON.stringify({
+                userId: selectedUserId,
+                amount: isRemove ? -amount : amount,
+                reason: reason || (isRemove ? 'Admin removed credits' : 'Admin added credits')
+            })
         });
 
         const data = await response.json();
 
         if (!response.ok) throw new Error(data.error);
 
-        showToast(`Added ${amount} credits!`);
+        showToast(isRemove ? `Removed ${amount} credits` : `Added ${amount} credits!`);
         closeAdminCreditsModal();
-        loadAdminUsers(); // Refresh list
+        loadAdminUsers();
+
+        // Also refresh user details modal if open
+        const userModal = document.getElementById('admin-user-modal');
+        if (!userModal.classList.contains('hidden')) {
+            showUserDetails(selectedUserId);
+        }
     } catch (e) {
-        console.error('Add credits error:', e);
-        showToast('Failed to add credits');
+        console.error('Modify credits error:', e);
+        showToast(isRemove ? 'Failed to remove credits' : 'Failed to add credits');
     }
 }
 
-function showUserDetails(userId) {
-    const user = allUsers.find(u => u.id === userId);
-    if (!user) return;
+async function showUserDetails(userId) {
+    const modal = document.getElementById('admin-user-modal');
+    const container = document.getElementById('admin-user-details');
 
-    // For now, just open add credits. Could expand to full user detail view later.
-    openAddCredits(userId, user.email);
+    modal.classList.remove('hidden');
+    container.innerHTML = '<div class="analytics-loading">Loading user...</div>';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(`/api/admin/user/${userId}`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load user');
+
+        const user = await response.json();
+        const joined = new Date(user.created_at).toLocaleDateString();
+        const provider = user.provider === 'google' ? '🔵 Google' : '📧 Email';
+
+        container.innerHTML = `
+            <div class="user-detail-header">
+                <h2>${user.email}</h2>
+                <span class="user-detail-provider">${provider}</span>
+            </div>
+
+            <div class="user-detail-stats">
+                <div class="user-stat-box">
+                    <span class="user-stat-value">${user.credits?.balance || 0}</span>
+                    <span class="user-stat-label">Credits</span>
+                </div>
+                <div class="user-stat-box">
+                    <span class="user-stat-value">${user.generations || 0}</span>
+                    <span class="user-stat-label">Generations</span>
+                </div>
+                <div class="user-stat-box">
+                    <span class="user-stat-value">$${((user.credits?.total_purchased || 0) * 0.10).toFixed(0)}</span>
+                    <span class="user-stat-label">Spent</span>
+                </div>
+            </div>
+
+            <div class="user-detail-info">
+                <p><strong>User ID:</strong> ${user.id}</p>
+                <p><strong>Joined:</strong> ${joined}</p>
+                ${user.subscription ? `<p><strong>Subscription:</strong> ${user.subscription.status} (${user.subscription.weekly_usage || 0}/${user.subscription.credits_per_period} weekly)</p>` : '<p><strong>Subscription:</strong> None</p>'}
+            </div>
+
+            <div class="user-detail-actions">
+                <button class="btn-primary" onclick="openAddCredits('${user.id}', '${user.email}')">Add Credits</button>
+                <button class="btn-secondary" onclick="openRemoveCredits('${user.id}', '${user.email}', ${user.credits?.balance || 0})">Remove Credits</button>
+                <button class="btn-danger" onclick="adminDeleteUser('${user.id}', '${user.email}')">Delete User</button>
+            </div>
+
+            ${user.recentGenerations && user.recentGenerations.length > 0 ? `
+                <div class="user-detail-history">
+                    <h3>Recent Generations</h3>
+                    ${user.recentGenerations.map(gen => {
+                        const date = new Date(gen.created_at).toLocaleDateString();
+                        return `<div class="user-gen-item">${gen.match_name || 'Unknown'} - ${gen.mode || 'normal'} - ${date}</div>`;
+                    }).join('')}
+                </div>
+            ` : ''}
+        `;
+    } catch (e) {
+        console.error('Load user details error:', e);
+        container.innerHTML = '<p class="breakdown-empty">Failed to load user details</p>';
+    }
+}
+
+function closeUserDetailsModal() {
+    document.getElementById('admin-user-modal').classList.add('hidden');
+}
+
+function openRemoveCredits(userId, email, currentBalance) {
+    selectedUserId = userId;
+    document.getElementById('admin-credits-email').textContent = `${email} (has ${currentBalance} credits)`;
+    document.getElementById('admin-credits-amount').value = 1;
+    document.getElementById('admin-credits-amount').max = currentBalance;
+    document.getElementById('admin-credits-reason').value = '';
+    document.getElementById('admin-credits-modal').classList.remove('hidden');
+    document.getElementById('admin-credits-modal').dataset.mode = 'remove';
+}
+
+async function adminDeleteUser(userId, email) {
+    if (!confirm(`DELETE user ${email}? This will remove ALL their data including generations, credits, and payment history. This cannot be undone!`)) return;
+
+    if (!confirm(`Are you SURE? Type 'DELETE' in the next prompt to confirm.`)) return;
+
+    const confirmation = prompt(`Type DELETE to permanently remove ${email}:`);
+    if (confirmation !== 'DELETE') {
+        showToast('Deletion cancelled');
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(`/api/admin/user/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to delete');
+
+        showToast('User deleted');
+        closeUserDetailsModal();
+        loadAdminUsers();
+    } catch (e) {
+        console.error('Delete user error:', e);
+        showToast('Failed to delete user');
+    }
 }
 
 // ===================
@@ -3093,7 +3424,8 @@ function setupListeners() {
         { id: 'success-breakdown-modal', close: () => closeBreakdown('success') },
         { id: 'feedback-prompt-modal', close: closeFeedbackPrompt },
         { id: 'unhinged-disclaimer-modal', close: cancelUnhingedMode },
-        { id: 'admin-credits-modal', close: closeAdminCreditsModal }
+        { id: 'admin-credits-modal', close: closeAdminCreditsModal },
+        { id: 'admin-user-modal', close: closeUserDetailsModal }
     ];
 
     modals.forEach(({ id, close }) => {

@@ -438,26 +438,89 @@
             <div class="screen-header">
                 <button class="back-btn" onclick="showHome()">← Back</button>
                 <span class="screen-title">👑 Admin</span>
-                <button class="back-btn" onclick="refreshAdminUsers()">🔄</button>
+                <button class="back-btn" onclick="refreshAdmin()">🔄</button>
             </div>
 
-            <div class="admin-stats" id="admin-stats">
-                <div class="admin-stat">
-                    <span class="admin-stat-value" id="admin-total-users">-</span>
-                    <span class="admin-stat-label">Users</span>
+            <!-- Admin Tabs -->
+            <div class="admin-tabs">
+                <button class="admin-tab active" data-tab="dashboard" onclick="switchAdminTab('dashboard')">📊</button>
+                <button class="admin-tab" data-tab="users" onclick="switchAdminTab('users')">👥</button>
+                <button class="admin-tab" data-tab="activity" onclick="switchAdminTab('activity')">⚡</button>
+                <button class="admin-tab" data-tab="payments" onclick="switchAdminTab('payments')">💰</button>
+                <button class="admin-tab" data-tab="subs" onclick="switchAdminTab('subs')">🔄</button>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div class="admin-content" id="admin-tab-dashboard">
+                <div class="admin-dashboard-grid">
+                    <div class="admin-dash-card">
+                        <span class="admin-dash-value" id="dash-users">-</span>
+                        <span class="admin-dash-label">Total Users</span>
+                        <span class="admin-dash-sub" id="dash-users-today">+0 today</span>
+                    </div>
+                    <div class="admin-dash-card">
+                        <span class="admin-dash-value" id="dash-active">-</span>
+                        <span class="admin-dash-label">Active (7d)</span>
+                    </div>
+                    <div class="admin-dash-card highlight">
+                        <span class="admin-dash-value" id="dash-revenue">$0</span>
+                        <span class="admin-dash-label">Revenue</span>
+                    </div>
+                    <div class="admin-dash-card">
+                        <span class="admin-dash-value" id="dash-subs">-</span>
+                        <span class="admin-dash-label">Subscribers</span>
+                    </div>
+                    <div class="admin-dash-card">
+                        <span class="admin-dash-value" id="dash-gens">-</span>
+                        <span class="admin-dash-label">Generations</span>
+                        <span class="admin-dash-sub" id="dash-gens-today">+0 today</span>
+                    </div>
+                    <div class="admin-dash-card">
+                        <span class="admin-dash-value" id="dash-credits">-</span>
+                        <span class="admin-dash-label">Credits Live</span>
+                    </div>
                 </div>
-                <div class="admin-stat">
-                    <span class="admin-stat-value" id="admin-total-gens">-</span>
-                    <span class="admin-stat-label">Generations</span>
+            </div>
+
+            <!-- Users Tab -->
+            <div class="admin-content hidden" id="admin-tab-users">
+                <div class="admin-search">
+                    <input type="text" id="admin-search" placeholder="Search by email..." oninput="filterAdminUsers()">
+                </div>
+                <div class="admin-users-list" id="admin-users-list">
+                    <div class="analytics-loading">Loading users...</div>
                 </div>
             </div>
 
-            <div class="admin-search">
-                <input type="text" id="admin-search" placeholder="Search by email..." oninput="filterAdminUsers()">
+            <!-- Activity Tab -->
+            <div class="admin-content hidden" id="admin-tab-activity">
+                <div class="admin-activity-list" id="admin-activity-list">
+                    <div class="analytics-loading">Loading activity...</div>
+                </div>
             </div>
 
-            <div class="admin-users-list" id="admin-users-list">
-                <div class="analytics-loading">Loading users...</div>
+            <!-- Payments Tab -->
+            <div class="admin-content hidden" id="admin-tab-payments">
+                <div class="admin-payments-list" id="admin-payments-list">
+                    <div class="analytics-loading">Loading payments...</div>
+                </div>
+            </div>
+
+            <!-- Subscriptions Tab -->
+            <div class="admin-content hidden" id="admin-tab-subs">
+                <div class="admin-subs-list" id="admin-subs-list">
+                    <div class="analytics-loading">Loading subscriptions...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Details Modal -->
+        <div id="admin-user-modal" class="modal hidden">
+            <div class="modal-content admin-user-modal-content">
+                <button class="close-modal-btn" onclick="closeUserDetailsModal()">&times;</button>
+                <div id="admin-user-details">
+                    <div class="analytics-loading">Loading...</div>
+                </div>
             </div>
         </div>
 

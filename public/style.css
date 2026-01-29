@@ -3069,3 +3069,614 @@ body {
     border: 1px solid rgba(255, 215, 0, 0.3);
     background: rgba(255, 215, 0, 0.1);
 }
+
+/* Admin Tabs */
+.admin-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    border-radius: 12px;
+}
+
+.admin-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 18px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.admin-tab.active {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+.admin-tab:active {
+    transform: scale(0.95);
+}
+
+.admin-content {
+    display: block;
+}
+
+.admin-content.hidden {
+    display: none;
+}
+
+/* Admin Dashboard Grid */
+.admin-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.admin-dash-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+
+.admin-dash-card.highlight {
+    background: rgba(74, 222, 128, 0.15);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.admin-dash-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.admin-dash-card.highlight .admin-dash-value {
+    color: #4ade80;
+}
+
+.admin-dash-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-dash-sub {
+    display: block;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 4px;
+}
+
+/* Admin Activity */
+.admin-activity-list,
+.admin-payments-list,
+.admin-subs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.admin-activity-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-activity-icon {
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.admin-activity-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-activity-main {
+    font-size: 14px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-activity-sub {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.admin-activity-time {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Admin Payment Item */
+.admin-payment-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-payment-info {
+    flex: 1;
+}
+
+.admin-payment-email {
+    font-size: 14px;
+    color: #fff;
+}
+
+.admin-payment-meta {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.admin-payment-amount {
+    font-size: 18px;
+    font-weight: 600;
+    color: #4ade80;
+}
+
+/* Admin Subscription Item */
+.admin-sub-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-sub-item.active {
+    border-left: 3px solid #4ade80;
+}
+
+.admin-sub-item.cancelled {
+    border-left: 3px solid #ff6b6b;
+    opacity: 0.7;
+}
+
+.admin-sub-info {
+    flex: 1;
+}
+
+.admin-sub-email {
+    font-size: 14px;
+    color: #fff;
+}
+
+.admin-sub-meta {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.admin-sub-status {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.admin-sub-status.active {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.admin-sub-status.cancelled {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+.admin-cancel-btn {
+    background: rgba(255, 107, 107, 0.2);
+    border: none;
+    color: #ff6b6b;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+/* Admin User Modal */
+.admin-user-modal-content {
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.admin-user-header {
+    text-align: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 16px;
+}
+
+.admin-user-header h2 {
+    font-size: 16px;
+    color: #fff;
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+.admin-user-header p {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.admin-user-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.admin-user-stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+}
+
+.admin-user-stat-card .value {
+    display: block;
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.admin-user-stat-card .label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+}
+
+.admin-user-section {
+    margin-bottom: 16px;
+}
+
+.admin-user-section h3 {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-user-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.admin-user-actions button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.admin-user-actions .btn-add {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.admin-user-actions .btn-remove {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+.admin-user-actions .btn-delete {
+    background: rgba(255, 59, 48, 0.3);
+    color: #ff3b30;
+}
+
+.admin-mini-list {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.admin-mini-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: space-between;
+}
+
+.admin-mini-item:last-child {
+    border-bottom: none;
+}
+
+/* User Detail Modal Styles */
+.user-detail-header {
+    text-align: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 16px;
+}
+
+.user-detail-header h2 {
+    font-size: 15px;
+    color: #fff;
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+.user-detail-provider {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.user-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.user-stat-box {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 14px 8px;
+    text-align: center;
+}
+
+.user-stat-value {
+    display: block;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.user-stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-detail-info {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.user-detail-info p {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 6px;
+}
+
+.user-detail-info p:last-child {
+    margin-bottom: 0;
+}
+
+.user-detail-info strong {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.user-detail-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.user-detail-actions button {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+    color: white;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.btn-danger {
+    background: rgba(255, 59, 48, 0.2);
+    color: #ff3b30;
+}
+
+.user-detail-history {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-detail-history h3 {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+}
+
+.user-gen-item {
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Activity Item Styles */
+.activity-icon {
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.activity-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.activity-email {
+    font-size: 13px;
+    color: #fff;
+    font-weight: 500;
+}
+
+.activity-desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.activity-time {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.admin-activity-item.payment .activity-icon {
+    background: rgba(74, 222, 128, 0.1);
+}
+
+/* Payment Item Styles */
+.payment-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.payment-email {
+    font-size: 13px;
+    color: #fff;
+    font-weight: 500;
+}
+
+.payment-date {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.payment-details {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.payment-amount {
+    font-size: 14px;
+    font-weight: 700;
+    color: #4ade80;
+}
+
+.payment-credits {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.payment-type {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+}
+
+/* Subscription Item Styles */
+.sub-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sub-email {
+    font-size: 13px;
+    color: #fff;
+    font-weight: 500;
+}
+
+.sub-started {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.sub-details {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sub-status {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+.sub-status.active {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.sub-status.inactive,
+.sub-status.cancelled,
+.sub-status.canceled {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.sub-usage {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.sub-cancel-btn {
+    background: rgba(255, 59, 48, 0.2);
+    color: #ff3b30;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}

@@ -1573,6 +1573,362 @@ app.get('/api/admin/check', async (req, res) => {
     res.json({ isAdmin: !!admin });
 });
 
+// Dashboard stats
+app.get('/api/admin/stats', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    try {
+        // Get user count
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const totalUsers = users?.length || 0;
+
+        // Users in last 24h
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const newUsersToday = users?.filter(u => u.created_at > oneDayAgo).length || 0;
+
+        // Active users (signed in within 7 days)
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const activeUsers = users?.filter(u => u.last_sign_in_at && u.last_sign_in_at > sevenDaysAgo).length || 0;
+
+        // Total generations
+        const { count: totalGenerations } = await supabaseAdmin
+            .from('generations')
+            .select('*', { count: 'exact', head: true });
+
+        // Generations today
+        const { count: generationsToday } = await supabaseAdmin
+            .from('generations')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', oneDayAgo);
+
+        // Total revenue from payments
+        const { data: payments } = await supabaseAdmin
+            .from('payments')
+            .select('amount');
+        const totalRevenue = (payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+
+        // Active subscriptions
+        const { count: activeSubscriptions } = await supabaseAdmin
+            .from('subscriptions')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'active');
+
+        // Total credits in circulation
+        const { data: credits } = await supabaseAdmin
+            .from('credits')
+            .select('balance');
+        const totalCredits = (credits || []).reduce((sum, c) => sum + (c.balance || 0), 0);
+
+        res.json({
+            totalUsers,
+            newUsersToday,
+            activeUsers,
+            totalGenerations: totalGenerations || 0,
+            generationsToday: generationsToday || 0,
+            totalRevenue: totalRevenue / 100, // Convert cents to dollars
+            activeSubscriptions: activeSubscriptions || 0,
+            totalCredits
+        });
+    } catch (error) {
+        console.error('Admin stats error:', error);
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+});
+
+// Modify credits (add or remove)
+app.post('/api/admin/modify-credits', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { userId, amount, reason } = req.body;
+
+    if (!userId || amount === undefined || amount === 0) {
+        return res.status(400).json({ error: 'Invalid userId or amount' });
+    }
+
+    try {
+        const { data: currentCredits } = await supabaseAdmin
+            .from('credits')
+            .select('balance')
+            .eq('id', userId)
+            .single();
+
+        const currentBalance = currentCredits?.balance || 0;
+        const newBalance = Math.max(0, currentBalance + amount); // Don't go below 0
+
+        const { error } = await supabaseAdmin
+            .from('credits')
+            .upsert({
+                id: userId,
+                balance: newBalance,
+                updated_at: new Date().toISOString()
+            });
+
+        if (error) throw error;
+
+        const action = amount > 0 ? 'added' : 'removed';
+        console.log(`💰 Admin ${admin.email} ${action} ${Math.abs(amount)} credits ${amount > 0 ? 'to' : 'from'} ${userId}. Reason: ${reason || 'none'}`);
+
+        res.json({ success: true, newBalance, message: `${action} ${Math.abs(amount)} credits` });
+    } catch (error) {
+        console.error('Admin modify credits error:', error);
+        res.status(500).json({ error: 'Failed to modify credits' });
+    }
+});
+
+// Get user details with full history
+app.get('/api/admin/user/:userId', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { userId } = req.params;
+
+    try {
+        // Get user from auth
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (authError || !user) throw new Error('User not found');
+
+        // Get credits
+        const { data: credits } = await supabaseAdmin
+            .from('credits')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        // Get generations (last 50)
+        const { data: generations } = await supabaseAdmin
+            .from('generations')
+            .select('id, match_name, mode, feedback, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        // Get payments
+        const { data: payments } = await supabaseAdmin
+            .from('payments')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        // Get subscription
+        const { data: subscription } = await supabaseAdmin
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+        res.json({
+            user: {
+                id: user.id,
+                email: user.email,
+                created_at: user.created_at,
+                last_sign_in: user.last_sign_in_at,
+                provider: user.app_metadata?.provider || 'email'
+            },
+            credits: credits || { balance: 0, total_purchased: 0 },
+            generations: generations || [],
+            payments: payments || [],
+            subscription: subscription || null
+        });
+    } catch (error) {
+        console.error('Admin user details error:', error);
+        res.status(500).json({ error: 'Failed to fetch user details' });
+    }
+});
+
+// Delete user
+app.delete('/api/admin/user/:userId', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { userId } = req.params;
+
+    try {
+        // Check user exists
+        const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (!user) throw new Error('User not found');
+
+        // Cancel subscription if exists
+        const { data: subscription } = await supabaseAdmin
+            .from('subscriptions')
+            .select('stripe_subscription_id')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .single();
+
+        if (subscription?.stripe_subscription_id) {
+            try {
+                await stripe.subscriptions.cancel(subscription.stripe_subscription_id);
+            } catch (e) {
+                console.log('No Stripe subscription to cancel');
+            }
+        }
+
+        // Delete all user data (cascades via foreign keys)
+        await supabaseAdmin.from('generations').delete().eq('user_id', userId);
+        await supabaseAdmin.from('referrals').delete().eq('referrer_id', userId);
+        await supabaseAdmin.from('referrals').delete().eq('referred_id', userId);
+        await supabaseAdmin.from('subscriptions').delete().eq('user_id', userId);
+        await supabaseAdmin.from('payments').delete().eq('user_id', userId);
+        await supabaseAdmin.from('credits').delete().eq('id', userId);
+        await supabaseAdmin.from('profiles').delete().eq('id', userId);
+
+        // Delete auth user
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+
+        console.log(`🗑️ Admin ${admin.email} deleted user ${user.email} (${userId})`);
+
+        res.json({ success: true, message: 'User deleted' });
+    } catch (error) {
+        console.error('Admin delete user error:', error);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+// Get recent activity
+app.get('/api/admin/activity', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    try {
+        // Get recent generations
+        const { data: recentGenerations } = await supabaseAdmin
+            .from('generations')
+            .select('id, user_id, match_name, mode, created_at')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        // Get recent payments
+        const { data: recentPayments } = await supabaseAdmin
+            .from('payments')
+            .select('id, user_id, amount, credits, type, created_at')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        // Get user emails for the activity
+        const userIds = [...new Set([
+            ...(recentGenerations || []).map(g => g.user_id),
+            ...(recentPayments || []).map(p => p.user_id)
+        ])];
+
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const emailMap = {};
+        users?.forEach(u => { emailMap[u.id] = u.email; });
+
+        // Add emails to activity items
+        const generations = (recentGenerations || []).map(g => ({
+            ...g,
+            email: emailMap[g.user_id] || 'Unknown',
+            type: 'generation'
+        }));
+
+        const payments = (recentPayments || []).map(p => ({
+            ...p,
+            email: emailMap[p.user_id] || 'Unknown',
+            type: 'payment'
+        }));
+
+        res.json({ generations, payments });
+    } catch (error) {
+        console.error('Admin activity error:', error);
+        res.status(500).json({ error: 'Failed to fetch activity' });
+    }
+});
+
+// Get all payments
+app.get('/api/admin/payments', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    try {
+        const { data: payments } = await supabaseAdmin
+            .from('payments')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        // Get user emails
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const emailMap = {};
+        users?.forEach(u => { emailMap[u.id] = u.email; });
+
+        const paymentsWithEmail = (payments || []).map(p => ({
+            ...p,
+            email: emailMap[p.user_id] || 'Unknown'
+        }));
+
+        res.json({ payments: paymentsWithEmail });
+    } catch (error) {
+        console.error('Admin payments error:', error);
+        res.status(500).json({ error: 'Failed to fetch payments' });
+    }
+});
+
+// Get all subscriptions
+app.get('/api/admin/subscriptions', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    try {
+        const { data: subscriptions } = await supabaseAdmin
+            .from('subscriptions')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        // Get user emails
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const emailMap = {};
+        users?.forEach(u => { emailMap[u.id] = u.email; });
+
+        const subsWithEmail = (subscriptions || []).map(s => ({
+            ...s,
+            email: emailMap[s.user_id] || 'Unknown'
+        }));
+
+        res.json({ subscriptions: subsWithEmail });
+    } catch (error) {
+        console.error('Admin subscriptions error:', error);
+        res.status(500).json({ error: 'Failed to fetch subscriptions' });
+    }
+});
+
+// Cancel subscription (admin)
+app.post('/api/admin/cancel-subscription', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { subscriptionId } = req.body;
+
+    try {
+        const { data: subscription } = await supabaseAdmin
+            .from('subscriptions')
+            .select('stripe_subscription_id, user_id')
+            .eq('id', subscriptionId)
+            .single();
+
+        if (!subscription) throw new Error('Subscription not found');
+
+        // Cancel in Stripe
+        if (subscription.stripe_subscription_id) {
+            await stripe.subscriptions.cancel(subscription.stripe_subscription_id);
+        }
+
+        // Update status
+        await supabaseAdmin
+            .from('subscriptions')
+            .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+            .eq('id', subscriptionId);
+
+        console.log(`❌ Admin ${admin.email} cancelled subscription ${subscriptionId}`);
+
+        res.json({ success: true, message: 'Subscription cancelled' });
+    } catch (error) {
+        console.error('Admin cancel subscription error:', error);
+        res.status(500).json({ error: 'Failed to cancel subscription' });
+    }
+});
+
 // ===================
 // STATIC ROUTES
 // ===================
