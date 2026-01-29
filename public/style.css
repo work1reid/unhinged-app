@@ -3127,6 +3127,19 @@ body {
     display: block;
 }
 
+.admin-section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.admin-section-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 16px;
+}
+
 .admin-content.hidden {
     display: none;
 }

@@ -450,6 +450,7 @@
 
             <!-- Dashboard Tab -->
             <div class="admin-content" id="admin-tab-dashboard">
+                <h2 class="admin-section-title">📊 Dashboard Overview</h2>
                 <div class="admin-dashboard-grid">
                     <div class="admin-dash-card">
                         <span class="admin-dash-value" id="dash-users">-</span>
@@ -482,6 +483,8 @@
 
             <!-- Users Tab -->
             <div class="admin-content hidden" id="admin-tab-users">
+                <h2 class="admin-section-title">👥 All Users</h2>
+                <p class="admin-section-desc">Click any user to view full profile and manage their account</p>
                 <div class="admin-search">
                     <input type="text" id="admin-search" placeholder="Search by email..." oninput="filterAdminUsers()">
                 </div>
@@ -492,6 +495,8 @@
 
             <!-- Activity Tab -->
             <div class="admin-content hidden" id="admin-tab-activity">
+                <h2 class="admin-section-title">⚡ Recent Activity</h2>
+                <p class="admin-section-desc">Live feed of generations and payments</p>
                 <div class="admin-activity-list" id="admin-activity-list">
                     <div class="analytics-loading">Loading activity...</div>
                 </div>
@@ -499,6 +504,8 @@
 
             <!-- Payments Tab -->
             <div class="admin-content hidden" id="admin-tab-payments">
+                <h2 class="admin-section-title">💰 Payment History</h2>
+                <p class="admin-section-desc">All credit purchases and subscriptions</p>
                 <div class="admin-payments-list" id="admin-payments-list">
                     <div class="analytics-loading">Loading payments...</div>
                 </div>
@@ -506,6 +513,8 @@
 
             <!-- Subscriptions Tab -->
             <div class="admin-content hidden" id="admin-tab-subs">
+                <h2 class="admin-section-title">🔄 Subscriptions</h2>
+                <p class="admin-section-desc">Active and cancelled subscriptions</p>
                 <div class="admin-subs-list" id="admin-subs-list">
                     <div class="analytics-loading">Loading subscriptions...</div>
                 </div>
@@ -513,8 +522,10 @@
 
             <!-- Admins Tab (super_admin+ only) -->
             <div class="admin-content hidden" id="admin-tab-admins">
+                <h2 class="admin-section-title">👑 Admin Team</h2>
+                <p class="admin-section-desc">Manage who has access to this panel</p>
                 <div class="admin-section-header">
-                    <h3>Admin Team</h3>
+                    <span></span>
                     <button class="admin-add-new-btn" onclick="showAddAdminModal()">+ Add Admin</button>
                 </div>
                 <div class="admin-admins-list" id="admin-admins-list">
@@ -524,6 +535,8 @@
 
             <!-- Logs Tab (super_admin+ only) -->
             <div class="admin-content hidden" id="admin-tab-logs">
+                <h2 class="admin-section-title">📜 Admin Activity Logs</h2>
+                <p class="admin-section-desc">Track all admin actions for accountability</p>
                 <div class="admin-logs-list" id="admin-logs-list">
                     <div class="analytics-loading">Loading logs...</div>
                 </div>
