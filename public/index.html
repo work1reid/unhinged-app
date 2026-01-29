@@ -133,6 +133,11 @@
                     <span class="feature-icon">📊</span>
                     <span class="feature-title">Analytics</span>
                 </button>
+
+                <button class="feature-card admin-only hidden" id="admin-btn" onclick="showAdmin()">
+                    <span class="feature-icon">👑</span>
+                    <span class="feature-title">Admin</span>
+                </button>
             </div>
 
             <p class="home-disclaimer">For entertainment only. Don't be a creep.</p>
@@ -425,6 +430,57 @@
             <div class="convo-actions">
                 <button class="btn-secondary" onclick="resetConvo()">🔄 New Chat</button>
                 <button class="btn-primary" onclick="shareConvoResults()">📤 Share</button>
+            </div>
+        </div>
+
+        <!-- Admin Screen -->
+        <div id="admin-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showHome()">← Back</button>
+                <span class="screen-title">👑 Admin</span>
+                <button class="back-btn" onclick="refreshAdminUsers()">🔄</button>
+            </div>
+
+            <div class="admin-stats" id="admin-stats">
+                <div class="admin-stat">
+                    <span class="admin-stat-value" id="admin-total-users">-</span>
+                    <span class="admin-stat-label">Users</span>
+                </div>
+                <div class="admin-stat">
+                    <span class="admin-stat-value" id="admin-total-gens">-</span>
+                    <span class="admin-stat-label">Generations</span>
+                </div>
+            </div>
+
+            <div class="admin-search">
+                <input type="text" id="admin-search" placeholder="Search by email..." oninput="filterAdminUsers()">
+            </div>
+
+            <div class="admin-users-list" id="admin-users-list">
+                <div class="analytics-loading">Loading users...</div>
+            </div>
+        </div>
+
+        <!-- Admin Add Credits Modal -->
+        <div id="admin-credits-modal" class="modal hidden">
+            <div class="modal-content disclaimer-modal-content">
+                <button class="close-modal-btn" onclick="closeAdminCreditsModal()">&times;</button>
+                <span class="disclaimer-icon">💰</span>
+                <h2>Add Credits</h2>
+                <p class="admin-user-email" id="admin-credits-email">user@email.com</p>
+
+                <div class="admin-credits-form">
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <input type="number" id="admin-credits-amount" value="5" min="1" max="1000">
+                    </div>
+                    <div class="form-group">
+                        <label>Reason (optional)</label>
+                        <input type="text" id="admin-credits-reason" placeholder="Support, refund, etc.">
+                    </div>
+                </div>
+
+                <button class="btn-primary btn-full" onclick="submitAdminCredits()">Add Credits</button>
             </div>
         </div>
 

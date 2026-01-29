@@ -49,6 +49,7 @@ async function initSupabase() {
             await loadCredits();
             await checkWeeklyBonus();
             await loadSubscription();
+            await checkAdminStatus();
         }
 
         supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -64,6 +65,7 @@ async function initSupabase() {
                 // Check for weekly Monday bonus
                 await checkWeeklyBonus();
                 await loadSubscription();
+                await checkAdminStatus();
                 await migrateLocalHistoryToCloud();
                 await processReferralOnSignup();
                 showHome();
@@ -72,6 +74,8 @@ async function initSupabase() {
                 currentUsername = null;
                 purchasedCredits = 0;
                 currentSubscription = null;
+                isAdmin = false;
+                document.getElementById('admin-btn')?.classList.add('hidden');
                 showLogin();
             }
 
@@ -2876,6 +2880,184 @@ function showToast(msg) {
 }
 
 // ===================
+// ADMIN PANEL
+// ===================
+
+let isAdmin = false;
+let allUsers = [];
+let selectedUserId = null;
+
+async function checkAdminStatus() {
+    if (!currentUser || !supabaseClient) {
+        isAdmin = false;
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.access_token) {
+            isAdmin = false;
+            return;
+        }
+
+        const response = await fetch('/api/admin/check', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        const data = await response.json();
+        isAdmin = data.isAdmin;
+
+        // Show/hide admin button
+        const adminBtn = document.getElementById('admin-btn');
+        if (adminBtn) {
+            adminBtn.classList.toggle('hidden', !isAdmin);
+        }
+    } catch (e) {
+        console.error('Admin check failed:', e);
+        isAdmin = false;
+    }
+}
+
+function showAdmin() {
+    if (!isAdmin) {
+        showToast('Unauthorized');
+        return;
+    }
+    showScreen('admin-screen');
+    loadAdminUsers();
+}
+
+async function loadAdminUsers() {
+    const container = document.getElementById('admin-users-list');
+    container.innerHTML = '<div class="analytics-loading">Loading users...</div>';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/users', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load');
+
+        const data = await response.json();
+        allUsers = data.users;
+
+        // Update stats
+        document.getElementById('admin-total-users').textContent = data.total;
+        const totalGens = allUsers.reduce((sum, u) => sum + u.generations, 0);
+        document.getElementById('admin-total-gens').textContent = totalGens;
+
+        renderAdminUsers(allUsers);
+    } catch (e) {
+        console.error('Load admin users error:', e);
+        container.innerHTML = '<p class="breakdown-empty">Failed to load users</p>';
+    }
+}
+
+function renderAdminUsers(users) {
+    const container = document.getElementById('admin-users-list');
+
+    if (users.length === 0) {
+        container.innerHTML = '<p class="breakdown-empty">No users found</p>';
+        return;
+    }
+
+    container.innerHTML = users.map(user => {
+        const joined = new Date(user.created_at).toLocaleDateString();
+        const provider = user.provider === 'google' ? '🔵' : '📧';
+        return `
+            <div class="admin-user-card" onclick="showUserDetails('${user.id}')">
+                <div class="admin-user-info">
+                    <span class="admin-user-email">${provider} ${user.email}</span>
+                    <span class="admin-user-meta">Joined ${joined}</span>
+                </div>
+                <div class="admin-user-stats">
+                    <div class="admin-user-stat credits">
+                        <span class="admin-user-stat-value">${user.credits}</span>
+                        <span class="admin-user-stat-label">Credits</span>
+                    </div>
+                    <div class="admin-user-stat">
+                        <span class="admin-user-stat-value">${user.generations}</span>
+                        <span class="admin-user-stat-label">Gens</span>
+                    </div>
+                    <button class="admin-add-btn" onclick="event.stopPropagation(); openAddCredits('${user.id}', '${user.email}')">+</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterAdminUsers() {
+    const search = document.getElementById('admin-search').value.toLowerCase().trim();
+    if (!search) {
+        renderAdminUsers(allUsers);
+        return;
+    }
+    const filtered = allUsers.filter(u => u.email.toLowerCase().includes(search));
+    renderAdminUsers(filtered);
+}
+
+function refreshAdminUsers() {
+    loadAdminUsers();
+    showToast('Refreshed');
+}
+
+function openAddCredits(userId, email) {
+    selectedUserId = userId;
+    document.getElementById('admin-credits-email').textContent = email;
+    document.getElementById('admin-credits-amount').value = 5;
+    document.getElementById('admin-credits-reason').value = '';
+    document.getElementById('admin-credits-modal').classList.remove('hidden');
+}
+
+function closeAdminCreditsModal() {
+    document.getElementById('admin-credits-modal').classList.add('hidden');
+    selectedUserId = null;
+}
+
+async function submitAdminCredits() {
+    if (!selectedUserId) return;
+
+    const amount = parseInt(document.getElementById('admin-credits-amount').value);
+    const reason = document.getElementById('admin-credits-reason').value.trim();
+
+    if (!amount || amount < 1) {
+        showToast('Enter a valid amount');
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/add-credits', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ userId: selectedUserId, amount, reason })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.error);
+
+        showToast(`Added ${amount} credits!`);
+        closeAdminCreditsModal();
+        loadAdminUsers(); // Refresh list
+    } catch (e) {
+        console.error('Add credits error:', e);
+        showToast('Failed to add credits');
+    }
+}
+
+function showUserDetails(userId) {
+    const user = allUsers.find(u => u.id === userId);
+    if (!user) return;
+
+    // For now, just open add credits. Could expand to full user detail view later.
+    openAddCredits(userId, user.email);
+}
+
+// ===================
 // EVENT LISTENERS
 // ===================
 function setupListeners() {
@@ -2910,7 +3092,8 @@ function setupListeners() {
         { id: 'generated-breakdown-modal', close: () => closeBreakdown('generated') },
         { id: 'success-breakdown-modal', close: () => closeBreakdown('success') },
         { id: 'feedback-prompt-modal', close: closeFeedbackPrompt },
-        { id: 'unhinged-disclaimer-modal', close: cancelUnhingedMode }
+        { id: 'unhinged-disclaimer-modal', close: cancelUnhingedMode },
+        { id: 'admin-credits-modal', close: closeAdminCreditsModal }
     ];
 
     modals.forEach(({ id, close }) => {

@@ -1436,6 +1436,144 @@ app.post('/api/recommendations', async (req, res) => {
 });
 
 // ===================
+// ADMIN ROUTES
+// ===================
+
+const ADMIN_EMAILS = [
+    'max132reid@gmail.com',
+    'work1reid@gmail.com',
+    'maxreid@redbendcc.nsw.edu.au',
+    'maxreid2008@icloud.com'
+];
+
+// Verify admin from auth token
+async function verifyAdmin(req) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return null;
+    }
+
+    const token = authHeader.split(' ')[1];
+    try {
+        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+        if (error || !user) return null;
+        if (!ADMIN_EMAILS.includes(user.email.toLowerCase())) return null;
+        return user;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Get all users with their credits and stats
+app.get('/api/admin/users', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) {
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        // Get all users from auth
+        const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+        if (authError) throw authError;
+
+        // Get all credits
+        const { data: credits } = await supabaseAdmin
+            .from('credits')
+            .select('id, balance, total_purchased');
+
+        // Get generation counts per user
+        const { data: generations } = await supabaseAdmin
+            .from('generations')
+            .select('user_id');
+
+        // Build credits map
+        const creditsMap = {};
+        (credits || []).forEach(c => {
+            creditsMap[c.id] = c;
+        });
+
+        // Build generation count map
+        const genCountMap = {};
+        (generations || []).forEach(g => {
+            genCountMap[g.user_id] = (genCountMap[g.user_id] || 0) + 1;
+        });
+
+        // Combine data
+        const userData = users.map(u => ({
+            id: u.id,
+            email: u.email,
+            created_at: u.created_at,
+            last_sign_in: u.last_sign_in_at,
+            provider: u.app_metadata?.provider || 'email',
+            credits: creditsMap[u.id]?.balance || 0,
+            total_purchased: creditsMap[u.id]?.total_purchased || 0,
+            generations: genCountMap[u.id] || 0
+        }));
+
+        // Sort by most recent
+        userData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        res.json({ users: userData, total: userData.length });
+    } catch (error) {
+        console.error('Admin users error:', error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+// Add credits to a user
+app.post('/api/admin/add-credits', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    if (!admin) {
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const { userId, amount, reason } = req.body;
+
+    if (!userId || !amount || amount < 1) {
+        return res.status(400).json({ error: 'Invalid userId or amount' });
+    }
+
+    try {
+        // Get current credits
+        const { data: currentCredits } = await supabaseAdmin
+            .from('credits')
+            .select('balance, total_purchased')
+            .eq('id', userId)
+            .single();
+
+        const currentBalance = currentCredits?.balance || 0;
+
+        // Upsert credits
+        const { error } = await supabaseAdmin
+            .from('credits')
+            .upsert({
+                id: userId,
+                balance: currentBalance + amount,
+                updated_at: new Date().toISOString()
+            });
+
+        if (error) throw error;
+
+        console.log(`🎁 Admin ${admin.email} added ${amount} credits to ${userId}. Reason: ${reason || 'none'}`);
+
+        res.json({
+            success: true,
+            newBalance: currentBalance + amount,
+            message: `Added ${amount} credits`
+        });
+    } catch (error) {
+        console.error('Admin add credits error:', error);
+        res.status(500).json({ error: 'Failed to add credits' });
+    }
+});
+
+// Check if current user is admin
+app.get('/api/admin/check', async (req, res) => {
+    const admin = await verifyAdmin(req);
+    res.json({ isAdmin: !!admin });
+});
+
+// ===================
 // STATIC ROUTES
 // ===================
 
