@@ -2884,12 +2884,16 @@ function showToast(msg) {
 // ===================
 
 let isAdmin = false;
+let adminRole = null;
+let canManageAdmins = false;
 let allUsers = [];
 let selectedUserId = null;
 
 async function checkAdminStatus() {
     if (!currentUser || !supabaseClient) {
         isAdmin = false;
+        adminRole = null;
+        canManageAdmins = false;
         return;
     }
 
@@ -2897,6 +2901,8 @@ async function checkAdminStatus() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session?.access_token) {
             isAdmin = false;
+            adminRole = null;
+            canManageAdmins = false;
             return;
         }
 
@@ -2905,15 +2911,25 @@ async function checkAdminStatus() {
         });
         const data = await response.json();
         isAdmin = data.isAdmin;
+        adminRole = data.role;
+        canManageAdmins = data.canManageAdmins;
 
         // Show/hide admin button
         const adminBtn = document.getElementById('admin-btn');
         if (adminBtn) {
             adminBtn.classList.toggle('hidden', !isAdmin);
         }
+
+        // Show/hide admin management tabs (only for super_admin and owner)
+        const adminsTabBtn = document.getElementById('admins-tab-btn');
+        const logsTabBtn = document.getElementById('logs-tab-btn');
+        if (adminsTabBtn) adminsTabBtn.classList.toggle('hidden', !canManageAdmins);
+        if (logsTabBtn) logsTabBtn.classList.toggle('hidden', !canManageAdmins);
     } catch (e) {
         console.error('Admin check failed:', e);
         isAdmin = false;
+        adminRole = null;
+        canManageAdmins = false;
     }
 }
 
@@ -2955,7 +2971,19 @@ function switchAdminTab(tab) {
         case 'subs':
             loadSubscriptions();
             break;
+        case 'admins':
+            loadAdmins();
+            break;
+        case 'logs':
+            loadAdminLogs();
+            break;
     }
+}
+
+function refreshAdmin() {
+    const activeTab = document.querySelector('.admin-tab.active')?.dataset.tab || 'dashboard';
+    switchAdminTab(activeTab);
+    showToast('Refreshed');
 }
 
 async function loadDashboardStats() {
@@ -3136,6 +3164,227 @@ async function adminCancelSubscription(subId, stripeSubId) {
     } catch (e) {
         console.error('Cancel subscription error:', e);
         showToast('Failed to cancel subscription');
+    }
+}
+
+// ===================
+// ADMIN MANAGEMENT
+// ===================
+
+async function loadAdmins() {
+    const container = document.getElementById('admin-admins-list');
+    container.innerHTML = '<div class="analytics-loading">Loading admins...</div>';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/admins', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load admins');
+
+        const data = await response.json();
+
+        if (data.admins.length === 0) {
+            container.innerHTML = '<p class="breakdown-empty">No admins found</p>';
+            return;
+        }
+
+        container.innerHTML = data.admins.map(admin => {
+            const roleColors = {
+                'owner': '#ffd700',
+                'super_admin': '#ff6b6b',
+                'admin': '#4ade80',
+                'moderator': '#60a5fa'
+            };
+            const roleLabels = {
+                'owner': 'Owner',
+                'super_admin': 'Super Admin',
+                'admin': 'Admin',
+                'moderator': 'Moderator'
+            };
+            const canModify = canManageAdmins && !admin.isOwner && (adminRole === 'owner' || admin.role !== 'super_admin');
+
+            return `
+                <div class="admin-admin-item">
+                    <div class="admin-admin-info">
+                        <span class="admin-admin-email">${admin.email}</span>
+                        <span class="admin-admin-role" style="color: ${roleColors[admin.role]}">${roleLabels[admin.role]}</span>
+                    </div>
+                    <div class="admin-admin-actions">
+                        ${canModify ? `
+                            <select class="admin-role-select" onchange="updateAdminRole('${admin.id}', this.value)" ${admin.isOwner ? 'disabled' : ''}>
+                                <option value="moderator" ${admin.role === 'moderator' ? 'selected' : ''}>Moderator</option>
+                                <option value="admin" ${admin.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                ${adminRole === 'owner' ? `<option value="super_admin" ${admin.role === 'super_admin' ? 'selected' : ''}>Super Admin</option>` : ''}
+                            </select>
+                            <button class="admin-remove-btn" onclick="removeAdmin('${admin.id}', '${admin.email}')">Remove</button>
+                        ` : `
+                            <span class="admin-badge ${admin.isOwner ? 'owner' : ''}">${admin.isOwner ? 'Protected' : ''}</span>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Load admins error:', e);
+        container.innerHTML = '<p class="breakdown-empty">Failed to load admins</p>';
+    }
+}
+
+async function loadAdminLogs() {
+    const container = document.getElementById('admin-logs-list');
+    container.innerHTML = '<div class="analytics-loading">Loading logs...</div>';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/logs', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load logs');
+
+        const data = await response.json();
+
+        if (data.logs.length === 0) {
+            container.innerHTML = '<p class="breakdown-empty">No admin activity yet</p>';
+            return;
+        }
+
+        const actionLabels = {
+            'add_admin': 'Added admin',
+            'remove_admin': 'Removed admin',
+            'update_admin_role': 'Changed role',
+            'add_credits': 'Added credits',
+            'remove_credits': 'Removed credits',
+            'delete_user': 'Deleted user'
+        };
+
+        container.innerHTML = data.logs.map(log => {
+            const time = new Date(log.created_at).toLocaleString();
+            const action = actionLabels[log.action] || log.action;
+            return `
+                <div class="admin-log-item">
+                    <div class="log-action">${action}</div>
+                    <div class="log-details">
+                        <span class="log-admin">${log.admin_email}</span>
+                        <span class="log-target">${log.target_email}</span>
+                        ${log.details ? `<span class="log-extra">${JSON.stringify(log.details)}</span>` : ''}
+                    </div>
+                    <div class="log-time">${time}</div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Load admin logs error:', e);
+        container.innerHTML = '<p class="breakdown-empty">Failed to load logs</p>';
+    }
+}
+
+function showAddAdminModal() {
+    document.getElementById('new-admin-email').value = '';
+    document.getElementById('new-admin-role').value = 'admin';
+    updateRoleDescription();
+    document.getElementById('add-admin-modal').classList.remove('hidden');
+}
+
+function closeAddAdminModal() {
+    document.getElementById('add-admin-modal').classList.add('hidden');
+}
+
+function updateRoleDescription() {
+    const role = document.getElementById('new-admin-role').value;
+    document.querySelectorAll('.role-desc').forEach(el => el.style.display = 'none');
+    const desc = document.getElementById(`role-desc-${role}`);
+    if (desc) desc.style.display = 'block';
+}
+
+async function submitNewAdmin() {
+    const email = document.getElementById('new-admin-email').value.trim();
+    const role = document.getElementById('new-admin-role').value;
+
+    if (!email) {
+        showToast('Enter an email address');
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/admin/admins', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ email, role })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.error || 'Failed to add admin');
+            return;
+        }
+
+        showToast(`Added ${email} as ${role}`);
+        closeAddAdminModal();
+        loadAdmins();
+    } catch (e) {
+        console.error('Add admin error:', e);
+        showToast('Failed to add admin');
+    }
+}
+
+async function updateAdminRole(userId, newRole) {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(`/api/admin/admins/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ role: newRole })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.error || 'Failed to update role');
+            loadAdmins(); // Refresh to reset select
+            return;
+        }
+
+        showToast(`Role updated to ${newRole}`);
+    } catch (e) {
+        console.error('Update admin role error:', e);
+        showToast('Failed to update role');
+        loadAdmins();
+    }
+}
+
+async function removeAdmin(userId, email) {
+    if (!confirm(`Remove ${email} from admins? They will lose all admin access.`)) return;
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(`/api/admin/admins/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.error || 'Failed to remove admin');
+            return;
+        }
+
+        showToast('Admin removed');
+        loadAdmins();
+    } catch (e) {
+        console.error('Remove admin error:', e);
+        showToast('Failed to remove admin');
     }
 }
 
@@ -3415,6 +3664,9 @@ function setupListeners() {
         }
     });
 
+    // Role description toggle in add admin modal
+    document.getElementById('new-admin-role')?.addEventListener('change', updateRoleDescription);
+
     // Close modals when clicking outside (on backdrop)
     const modals = [
         { id: 'settings-modal', close: closeSettings },
@@ -3425,7 +3677,8 @@ function setupListeners() {
         { id: 'feedback-prompt-modal', close: closeFeedbackPrompt },
         { id: 'unhinged-disclaimer-modal', close: cancelUnhingedMode },
         { id: 'admin-credits-modal', close: closeAdminCreditsModal },
-        { id: 'admin-user-modal', close: closeUserDetailsModal }
+        { id: 'admin-user-modal', close: closeUserDetailsModal },
+        { id: 'add-admin-modal', close: closeAddAdminModal }
     ];
 
     modals.forEach(({ id, close }) => {

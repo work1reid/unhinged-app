@@ -239,5 +239,68 @@ END $$;
 
 
 -- =============================================================================
+-- ADMINS TABLE (stores admin users and their roles)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS admins (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+    role TEXT NOT NULL DEFAULT 'admin',
+    created_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Valid roles: 'owner', 'super_admin', 'admin', 'moderator'
+-- owner: Full access, cannot be removed, can manage all admins
+-- super_admin: Full access, can manage admins (except owner)
+-- admin: Can manage users, credits, subscriptions
+-- moderator: Read-only access to admin panel
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_admins_user_id ON admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_admins_role ON admins(role);
+
+-- Enable RLS
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'admins' AND policyname = 'Service role full access to admins') THEN
+        CREATE POLICY "Service role full access to admins" ON admins FOR ALL USING (auth.role() = 'service_role');
+    END IF;
+END $$;
+
+
+-- =============================================================================
+-- ADMIN ACTIVITY LOG (tracks admin actions)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS admin_logs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    admin_id UUID REFERENCES auth.users(id),
+    action TEXT NOT NULL,
+    target_user_id UUID REFERENCES auth.users(id),
+    details JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_admin_logs_admin_id ON admin_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_created_at ON admin_logs(created_at DESC);
+
+-- Enable RLS
+ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'admin_logs' AND policyname = 'Service role full access to admin_logs') THEN
+        CREATE POLICY "Service role full access to admin_logs" ON admin_logs FOR ALL USING (auth.role() = 'service_role');
+    END IF;
+END $$;
+
+
+-- =============================================================================
 -- DONE! All tables created safely.
 -- =============================================================================

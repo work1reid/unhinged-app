@@ -448,6 +448,8 @@
                 <button class="admin-tab" data-tab="activity" onclick="switchAdminTab('activity')">⚡</button>
                 <button class="admin-tab" data-tab="payments" onclick="switchAdminTab('payments')">💰</button>
                 <button class="admin-tab" data-tab="subs" onclick="switchAdminTab('subs')">🔄</button>
+                <button class="admin-tab hidden" data-tab="admins" id="admins-tab-btn" onclick="switchAdminTab('admins')">👑</button>
+                <button class="admin-tab hidden" data-tab="logs" id="logs-tab-btn" onclick="switchAdminTab('logs')">📜</button>
             </div>
 
             <!-- Dashboard Tab -->
@@ -512,6 +514,24 @@
                     <div class="analytics-loading">Loading subscriptions...</div>
                 </div>
             </div>
+
+            <!-- Admins Tab (super_admin+ only) -->
+            <div class="admin-content hidden" id="admin-tab-admins">
+                <div class="admin-section-header">
+                    <h3>Admin Team</h3>
+                    <button class="admin-add-new-btn" onclick="showAddAdminModal()">+ Add Admin</button>
+                </div>
+                <div class="admin-admins-list" id="admin-admins-list">
+                    <div class="analytics-loading">Loading admins...</div>
+                </div>
+            </div>
+
+            <!-- Logs Tab (super_admin+ only) -->
+            <div class="admin-content hidden" id="admin-tab-logs">
+                <div class="admin-logs-list" id="admin-logs-list">
+                    <div class="analytics-loading">Loading logs...</div>
+                </div>
+            </div>
         </div>
 
         <!-- User Details Modal -->
@@ -544,6 +564,44 @@
                 </div>
 
                 <button class="btn-primary btn-full" onclick="submitAdminCredits()">Add Credits</button>
+            </div>
+        </div>
+
+        <!-- Add Admin Modal -->
+        <div id="add-admin-modal" class="modal hidden">
+            <div class="modal-content disclaimer-modal-content">
+                <button class="close-modal-btn" onclick="closeAddAdminModal()">&times;</button>
+                <span class="disclaimer-icon">👑</span>
+                <h2>Add Admin</h2>
+
+                <div class="admin-form">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="new-admin-email" placeholder="user@example.com">
+                        <span class="form-hint">User must have an existing account</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="new-admin-role">
+                            <option value="moderator">Moderator (View Only)</option>
+                            <option value="admin" selected>Admin (Manage Users)</option>
+                            <option value="super_admin">Super Admin (Manage Admins)</option>
+                        </select>
+                    </div>
+                    <div class="role-descriptions">
+                        <div class="role-desc" id="role-desc-moderator">
+                            <strong>Moderator:</strong> Can view all admin data but cannot make changes.
+                        </div>
+                        <div class="role-desc" id="role-desc-admin">
+                            <strong>Admin:</strong> Can manage users, credits, subscriptions, and view activity.
+                        </div>
+                        <div class="role-desc" id="role-desc-super_admin">
+                            <strong>Super Admin:</strong> Full access including adding/removing other admins.
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-primary btn-full" onclick="submitNewAdmin()">Add Admin</button>
             </div>
         </div>
 

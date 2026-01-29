@@ -1439,15 +1439,29 @@ app.post('/api/recommendations', async (req, res) => {
 // ADMIN ROUTES
 // ===================
 
-const ADMIN_EMAILS = [
+// Owner emails - these are permanent super admins that cannot be removed
+const OWNER_EMAILS = [
     'max132reid@gmail.com',
     'work1reid@gmail.com',
     'maxreid@redbendcc.nsw.edu.au',
     'maxreid2008@icloud.com'
 ];
 
-// Verify admin from auth token
-async function verifyAdmin(req) {
+// Role hierarchy (higher number = more permissions)
+const ROLE_LEVELS = {
+    'moderator': 1,    // Read-only access
+    'admin': 2,        // Can manage users, credits
+    'super_admin': 3,  // Can manage admins (except owners)
+    'owner': 4         // Full access, cannot be removed
+};
+
+// Check if role has permission for an action
+function hasPermission(role, requiredRole) {
+    return (ROLE_LEVELS[role] || 0) >= (ROLE_LEVELS[requiredRole] || 0);
+}
+
+// Verify admin from auth token and return user with role
+async function verifyAdmin(req, requiredRole = 'moderator') {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return null;
@@ -1457,10 +1471,47 @@ async function verifyAdmin(req) {
     try {
         const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
         if (error || !user) return null;
-        if (!ADMIN_EMAILS.includes(user.email.toLowerCase())) return null;
+
+        // Check if user is an owner (permanent super admin)
+        if (OWNER_EMAILS.includes(user.email.toLowerCase())) {
+            user.adminRole = 'owner';
+            return user;
+        }
+
+        // Check if user is in admins table
+        const { data: adminRecord } = await supabaseAdmin
+            .from('admins')
+            .select('role')
+            .eq('user_id', user.id)
+            .single();
+
+        if (!adminRecord) return null;
+
+        user.adminRole = adminRecord.role;
+
+        // Check if user has required permission level
+        if (!hasPermission(user.adminRole, requiredRole)) {
+            return null;
+        }
+
         return user;
     } catch (e) {
+        console.error('Admin verification error:', e);
         return null;
+    }
+}
+
+// Log admin action
+async function logAdminAction(adminId, action, targetUserId, details = {}) {
+    try {
+        await supabaseAdmin.from('admin_logs').insert({
+            admin_id: adminId,
+            action,
+            target_user_id: targetUserId,
+            details
+        });
+    } catch (e) {
+        console.error('Failed to log admin action:', e);
     }
 }
 
@@ -1567,10 +1618,14 @@ app.post('/api/admin/add-credits', async (req, res) => {
     }
 });
 
-// Check if current user is admin
+// Check if current user is admin and get their role
 app.get('/api/admin/check', async (req, res) => {
     const admin = await verifyAdmin(req);
-    res.json({ isAdmin: !!admin });
+    res.json({
+        isAdmin: !!admin,
+        role: admin?.adminRole || null,
+        canManageAdmins: admin ? hasPermission(admin.adminRole, 'super_admin') : false
+    });
 });
 
 // Dashboard stats
@@ -1890,6 +1945,291 @@ app.get('/api/admin/subscriptions', async (req, res) => {
     } catch (error) {
         console.error('Admin subscriptions error:', error);
         res.status(500).json({ error: 'Failed to fetch subscriptions' });
+    }
+});
+
+// ===================
+// ADMIN MANAGEMENT
+// ===================
+
+// Get all admins
+app.get('/api/admin/admins', async (req, res) => {
+    const admin = await verifyAdmin(req, 'admin');
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    try {
+        // Get admins from database
+        const { data: dbAdmins } = await supabaseAdmin
+            .from('admins')
+            .select('user_id, role, created_at, created_by')
+            .order('created_at', { ascending: true });
+
+        // Get user details for each admin
+        const adminsWithDetails = [];
+
+        // First add owners
+        const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers();
+
+        for (const email of OWNER_EMAILS) {
+            const ownerUser = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+            if (ownerUser) {
+                adminsWithDetails.push({
+                    id: ownerUser.id,
+                    email: ownerUser.email,
+                    role: 'owner',
+                    created_at: ownerUser.created_at,
+                    isOwner: true
+                });
+            }
+        }
+
+        // Then add database admins (excluding owners)
+        for (const dbAdmin of (dbAdmins || [])) {
+            // Skip if already added as owner
+            if (adminsWithDetails.find(a => a.id === dbAdmin.user_id)) continue;
+
+            const adminUser = allUsers.find(u => u.id === dbAdmin.user_id);
+            if (adminUser) {
+                adminsWithDetails.push({
+                    id: adminUser.id,
+                    email: adminUser.email,
+                    role: dbAdmin.role,
+                    created_at: dbAdmin.created_at,
+                    created_by: dbAdmin.created_by,
+                    isOwner: false
+                });
+            }
+        }
+
+        res.json({ admins: adminsWithDetails });
+    } catch (error) {
+        console.error('Get admins error:', error);
+        res.status(500).json({ error: 'Failed to load admins' });
+    }
+});
+
+// Add new admin
+app.post('/api/admin/admins', async (req, res) => {
+    const admin = await verifyAdmin(req, 'super_admin');
+    if (!admin) return res.status(403).json({ error: 'Unauthorized - requires super admin' });
+
+    const { email, role } = req.body;
+
+    if (!email || !role) {
+        return res.status(400).json({ error: 'Email and role required' });
+    }
+
+    // Validate role
+    if (!['moderator', 'admin', 'super_admin'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    // Only owners can create super_admins
+    if (role === 'super_admin' && admin.adminRole !== 'owner') {
+        return res.status(403).json({ error: 'Only owners can create super admins' });
+    }
+
+    try {
+        // Find user by email
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const targetUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+        if (!targetUser) {
+            return res.status(404).json({ error: 'User not found. They must sign up first.' });
+        }
+
+        // Check if already an owner
+        if (OWNER_EMAILS.includes(targetUser.email.toLowerCase())) {
+            return res.status(400).json({ error: 'This user is already an owner' });
+        }
+
+        // Check if already an admin
+        const { data: existingAdmin } = await supabaseAdmin
+            .from('admins')
+            .select('id')
+            .eq('user_id', targetUser.id)
+            .single();
+
+        if (existingAdmin) {
+            return res.status(400).json({ error: 'User is already an admin. Update their role instead.' });
+        }
+
+        // Add to admins table
+        const { error } = await supabaseAdmin.from('admins').insert({
+            user_id: targetUser.id,
+            role: role,
+            created_by: admin.id
+        });
+
+        if (error) throw error;
+
+        // Log action
+        await logAdminAction(admin.id, 'add_admin', targetUser.id, { role, email });
+
+        console.log(`👑 Admin ${admin.email} added ${email} as ${role}`);
+
+        res.json({ success: true, message: `Added ${email} as ${role}` });
+    } catch (error) {
+        console.error('Add admin error:', error);
+        res.status(500).json({ error: 'Failed to add admin' });
+    }
+});
+
+// Update admin role
+app.put('/api/admin/admins/:userId', async (req, res) => {
+    const admin = await verifyAdmin(req, 'super_admin');
+    if (!admin) return res.status(403).json({ error: 'Unauthorized - requires super admin' });
+
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+        return res.status(400).json({ error: 'Role required' });
+    }
+
+    // Validate role
+    if (!['moderator', 'admin', 'super_admin'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    // Only owners can set super_admin role
+    if (role === 'super_admin' && admin.adminRole !== 'owner') {
+        return res.status(403).json({ error: 'Only owners can set super admin role' });
+    }
+
+    try {
+        // Check if target is an owner
+        const { data: { user: targetUser } } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (OWNER_EMAILS.includes(targetUser?.email?.toLowerCase())) {
+            return res.status(400).json({ error: 'Cannot modify owner role' });
+        }
+
+        // Get current admin record
+        const { data: existingAdmin } = await supabaseAdmin
+            .from('admins')
+            .select('role')
+            .eq('user_id', userId)
+            .single();
+
+        if (!existingAdmin) {
+            return res.status(404).json({ error: 'Admin not found' });
+        }
+
+        // Non-owners cannot modify super_admins
+        if (existingAdmin.role === 'super_admin' && admin.adminRole !== 'owner') {
+            return res.status(403).json({ error: 'Only owners can modify super admins' });
+        }
+
+        // Update role
+        const { error } = await supabaseAdmin
+            .from('admins')
+            .update({ role })
+            .eq('user_id', userId);
+
+        if (error) throw error;
+
+        // Log action
+        await logAdminAction(admin.id, 'update_admin_role', userId, {
+            oldRole: existingAdmin.role,
+            newRole: role
+        });
+
+        console.log(`👑 Admin ${admin.email} changed ${userId} role from ${existingAdmin.role} to ${role}`);
+
+        res.json({ success: true, message: `Role updated to ${role}` });
+    } catch (error) {
+        console.error('Update admin role error:', error);
+        res.status(500).json({ error: 'Failed to update role' });
+    }
+});
+
+// Remove admin
+app.delete('/api/admin/admins/:userId', async (req, res) => {
+    const admin = await verifyAdmin(req, 'super_admin');
+    if (!admin) return res.status(403).json({ error: 'Unauthorized - requires super admin' });
+
+    const { userId } = req.params;
+
+    try {
+        // Check if target is an owner
+        const { data: { user: targetUser } } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (OWNER_EMAILS.includes(targetUser?.email?.toLowerCase())) {
+            return res.status(400).json({ error: 'Cannot remove owner' });
+        }
+
+        // Get current admin record
+        const { data: existingAdmin } = await supabaseAdmin
+            .from('admins')
+            .select('role')
+            .eq('user_id', userId)
+            .single();
+
+        if (!existingAdmin) {
+            return res.status(404).json({ error: 'Admin not found' });
+        }
+
+        // Non-owners cannot remove super_admins
+        if (existingAdmin.role === 'super_admin' && admin.adminRole !== 'owner') {
+            return res.status(403).json({ error: 'Only owners can remove super admins' });
+        }
+
+        // Cannot remove self
+        if (userId === admin.id) {
+            return res.status(400).json({ error: 'Cannot remove yourself' });
+        }
+
+        // Delete from admins table
+        const { error } = await supabaseAdmin
+            .from('admins')
+            .delete()
+            .eq('user_id', userId);
+
+        if (error) throw error;
+
+        // Log action
+        await logAdminAction(admin.id, 'remove_admin', userId, {
+            email: targetUser?.email,
+            role: existingAdmin.role
+        });
+
+        console.log(`👑 Admin ${admin.email} removed ${targetUser?.email} from admins`);
+
+        res.json({ success: true, message: 'Admin removed' });
+    } catch (error) {
+        console.error('Remove admin error:', error);
+        res.status(500).json({ error: 'Failed to remove admin' });
+    }
+});
+
+// Get admin activity logs
+app.get('/api/admin/logs', async (req, res) => {
+    const admin = await verifyAdmin(req, 'super_admin');
+    if (!admin) return res.status(403).json({ error: 'Unauthorized' });
+
+    try {
+        const { data: logs } = await supabaseAdmin
+            .from('admin_logs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        // Get user emails for logs
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+
+        const logsWithDetails = (logs || []).map(log => {
+            const adminUser = users.find(u => u.id === log.admin_id);
+            const targetUser = users.find(u => u.id === log.target_user_id);
+            return {
+                ...log,
+                admin_email: adminUser?.email || 'Unknown',
+                target_email: targetUser?.email || log.details?.email || 'Unknown'
+            };
+        });
+
+        res.json({ logs: logsWithDetails });
+    } catch (error) {
+        console.error('Get admin logs error:', error);
+        res.status(500).json({ error: 'Failed to load logs' });
     }
 });
 
