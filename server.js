@@ -188,6 +188,17 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
                     created_at: new Date().toISOString()
                 });
 
+            // Update leaderboard spending stats
+            try {
+                await supabaseAdmin.rpc('increment_profile_stat', {
+                    user_id: userId,
+                    stat_name: 'total_spent',
+                    increment_by: session.amount_total || 0
+                });
+            } catch (e) {
+                console.log('Profile stat update skipped:', e.message);
+            }
+
             console.log(`✅ Added ${credits} credits to user ${userId}. New balance: ${currentBalance + credits}`);
         } catch (err) {
             console.error('❌ Webhook processing error:', err);
@@ -265,6 +276,17 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
                     type: 'subscription',
                     created_at: new Date().toISOString()
                 });
+
+            // Update leaderboard spending stats
+            try {
+                await supabaseAdmin.rpc('increment_profile_stat', {
+                    user_id: userId,
+                    stat_name: 'total_spent',
+                    increment_by: invoice.amount_paid || 0
+                });
+            } catch (e) {
+                console.log('Profile stat update skipped:', e.message);
+            }
 
             console.log(`✅ Subscription renewal: Added ${credits} credits to user ${userId}`);
         } catch (err) {
@@ -491,7 +513,7 @@ app.post('/api/generate', apiLimiter, dailyLimiter, async (req, res) => {
         const { image, mode, mediaType } = req.body;
 
         // Validate mode
-        const allowedModes = ['chaotic', 'flirty', 'unhinged', 'mysterious', 'dadjoke', 'poetic'];
+        const allowedModes = ['chaotic', 'flirty', 'unhinged', 'mysterious', 'dadjoke', 'poetic', 'mixed'];
         if (!allowedModes.includes(mode)) {
             return res.status(400).json({ error: 'Invalid mode selected' });
         }
@@ -725,8 +747,36 @@ Return ONLY a JSON object in this EXACT format:
 
                 poetic: `Generate 3 artsy, poetic dating app opening messages.
                          These should be beautifully written, metaphorical, and surprisingly deep.
-                         Reference their profile as if describing a work of art.`
+                         Reference their profile as if describing a work of art.`,
+
+                mixed: `Generate 6 dating app opening messages, one in each of these DIFFERENT styles:
+                        1. FLIRTY: Smooth, confident, slightly suggestive, charming
+                        2. CHAOTIC: Weird, absurdly funny, unexpected, makes them laugh
+                        3. DAD JOKE: Painfully punny, groan-worthy, so bad it's good
+                        4. MYSTERIOUS: Cryptic, intriguing, thought-provoking
+                        5. POETIC: Beautifully written, metaphorical, surprisingly deep
+                        6. BOLD: Direct and confident, says what you want
+
+                        Each opener MUST reference specific things from their profile.
+                        Make each one clearly match its style.`
             };
+
+            const jsonFormat = mode === 'mixed'
+                ? `{
+    "openers": [
+        {"type": "Flirty", "emoji": "😏", "text": "flirty opener"},
+        {"type": "Chaotic", "emoji": "🌀", "text": "chaotic opener"},
+        {"type": "Dad Joke", "emoji": "👴", "text": "dad joke opener"},
+        {"type": "Mysterious", "emoji": "🎭", "text": "mysterious opener"},
+        {"type": "Poetic", "emoji": "🎨", "text": "poetic opener"},
+        {"type": "Bold", "emoji": "💪", "text": "bold opener"}
+    ]
+}`
+                : `{
+    "openers": [
+        {"type": "Style", "emoji": "🎭", "text": "opener text"}
+    ]
+}`;
 
             const openerPrompt = `Based on this dating profile:
 - Name: ${profileInfo.name || 'not visible'}
@@ -737,11 +787,7 @@ Return ONLY a JSON object in this EXACT format:
 ${modePrompts[mode] || modePrompts.chaotic}
 
 Return ONLY JSON:
-{
-    "openers": [
-        {"type": "Style", "emoji": "🎭", "text": "opener text"}
-    ]
-}`;
+${jsonFormat}`;
 
             let openerText;
 
@@ -810,6 +856,18 @@ Return ONLY JSON:
         }
 
         console.log(`[${requestId}] ✅ Success - ${result.openers.length} openers generated`);
+
+        // Track generation stat for leaderboard (async, don't wait)
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            const token = authHeader.replace('Bearer ', '');
+            supabaseAdmin.auth.getUser(token).then(({ data: { user } }) => {
+                if (user) {
+                    updateProfileStats(user.id, 'generation', 1);
+                }
+            }).catch(() => {});
+        }
+
         res.json(result);
 
     } catch (error) {
@@ -985,6 +1043,495 @@ Return ONLY the JSON, no other text.`;
         });
     }
 });
+
+// ===================
+// FOLLOW-UP RESPONSE ENDPOINT
+// ===================
+
+app.post('/api/followup', apiLimiter, async (req, res) => {
+    const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    console.log(`[${requestId}] 💬 Follow-up response request`);
+
+    try {
+        const { openerUsed, theirReply, matchName, profile } = req.body;
+
+        if (!theirReply) {
+            return res.status(400).json({ error: 'Their reply is required' });
+        }
+
+        const followupPrompt = `You are an expert dating coach helping someone continue a dating app conversation.
+
+Context:
+- Match's name: ${matchName || 'Unknown'}
+${openerUsed ? `- Opening line that was used: "${openerUsed}"` : ''}
+- Their reply: "${theirReply}"
+${profile ? `- Match's profile summary: ${JSON.stringify(profile)}` : ''}
+
+Generate 3 different follow-up responses that:
+1. Keep the conversation flowing naturally
+2. Build on what they said (don't ignore their message)
+3. Are engaging but not try-hard
+4. Mix playful and genuine approaches
+
+For each response, include:
+- A style label (e.g., "Playful", "Genuine", "Curious", "Bold", "Witty")
+- An emoji that fits the style
+- The actual message (15-40 words max)
+
+Respond in this exact JSON format:
+{
+  "suggestions": [
+    {"style": "Style Name", "emoji": "🎯", "text": "Your response here"},
+    {"style": "Style Name", "emoji": "💫", "text": "Your response here"},
+    {"style": "Style Name", "emoji": "🔥", "text": "Your response here"}
+  ]
+}`;
+
+        let responseText = null;
+
+        // Try Groq first (fast and free)
+        if (groq) {
+            try {
+                const groqResponse = await groq.chat.completions.create({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: 'user', content: followupPrompt }],
+                    max_tokens: 800,
+                    temperature: 0.8
+                });
+                responseText = groqResponse.choices[0]?.message?.content;
+                console.log(`[${requestId}] 📝 Groq follow-up complete (FREE)`);
+            } catch (groqError) {
+                console.log(`[${requestId}] ⚠️ Groq failed, falling back to Claude:`, groqError.message);
+            }
+        }
+
+        // Fallback to Claude
+        if (!responseText) {
+            console.log(`[${requestId}] 🤖 Using Claude for follow-up (PAID)`);
+            const claudeResponse = await anthropic.messages.create({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 800,
+                messages: [{ role: 'user', content: followupPrompt }]
+            });
+            responseText = claudeResponse.content[0].text;
+        }
+
+        // Parse response
+        let result;
+        try {
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        } catch (e) {
+            console.error(`[${requestId}] ❌ Parse error:`, e.message);
+            result = {
+                suggestions: [
+                    { style: 'Genuine', emoji: '💬', text: 'That\'s interesting! Tell me more about that.' },
+                    { style: 'Playful', emoji: '😏', text: 'Okay now I\'m curious - what else should I know about you?' },
+                    { style: 'Bold', emoji: '🔥', text: 'I like your vibe. We should definitely grab coffee sometime.' }
+                ]
+            };
+        }
+
+        console.log(`[${requestId}] ✅ Follow-up complete`);
+        res.json(result);
+
+    } catch (error) {
+        console.error(`[${requestId}] ❌ Follow-up error:`, error.message);
+        res.status(500).json({
+            error: 'Failed to generate follow-up',
+            message: 'Something went wrong. Please try again.'
+        });
+    }
+});
+
+// ===================
+// REFERRAL SYSTEM
+// ===================
+
+const REFERRAL_REWARD_CREDITS = 25;
+
+// Get user's referral info
+app.get('/api/referral/info', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+
+        // Get or create profile with referral code
+        let { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile) {
+            // Generate unique referral code
+            const referralCode = user.id.slice(0, 8).toUpperCase();
+            const { data: newProfile } = await supabaseAdmin
+                .from('profiles')
+                .insert({
+                    id: user.id,
+                    referral_code: referralCode,
+                    display_name: user.email?.split('@')[0] || 'User'
+                })
+                .select()
+                .single();
+            profile = newProfile;
+        }
+
+        // Get referral stats
+        const { data: referrals } = await supabaseAdmin
+            .from('referrals')
+            .select('*')
+            .eq('referrer_id', user.id);
+
+        const pending = (referrals || []).filter(r => r.status === 'pending').length;
+        const confirmed = (referrals || []).filter(r => r.status === 'confirmed').length;
+        const rewarded = (referrals || []).filter(r => r.status === 'rewarded').length;
+
+        res.json({
+            referralCode: profile?.referral_code,
+            referralLink: `${req.protocol}://${req.get('host')}?ref=${profile?.referral_code}`,
+            stats: {
+                pending,
+                confirmed,
+                rewarded,
+                total: (referrals || []).length,
+                creditsEarned: rewarded * REFERRAL_REWARD_CREDITS
+            }
+        });
+    } catch (error) {
+        console.error('Referral info error:', error);
+        res.status(500).json({ error: 'Failed to get referral info' });
+    }
+});
+
+// Apply referral code (called when new user signs up with a referral)
+app.post('/api/referral/apply', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+
+        const { referralCode } = req.body;
+        if (!referralCode) return res.status(400).json({ error: 'Referral code required' });
+
+        // Check if user already has a referrer
+        const { data: existingReferral } = await supabaseAdmin
+            .from('referrals')
+            .select('*')
+            .eq('referred_id', user.id)
+            .single();
+
+        if (existingReferral) {
+            return res.json({ success: true, message: 'Already referred' });
+        }
+
+        // Find the referrer by code
+        const { data: referrerProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('referral_code', referralCode.toUpperCase())
+            .single();
+
+        if (!referrerProfile) {
+            return res.status(400).json({ error: 'Invalid referral code' });
+        }
+
+        // Can't refer yourself
+        if (referrerProfile.id === user.id) {
+            return res.status(400).json({ error: 'Cannot refer yourself' });
+        }
+
+        // Create referral record
+        await supabaseAdmin
+            .from('referrals')
+            .insert({
+                referrer_id: referrerProfile.id,
+                referred_id: user.id,
+                status: 'pending'
+            });
+
+        console.log(`📨 Referral created: ${user.email} referred by ${referralCode}`);
+        res.json({ success: true, message: 'Referral applied!' });
+    } catch (error) {
+        console.error('Apply referral error:', error);
+        res.status(500).json({ error: 'Failed to apply referral' });
+    }
+});
+
+// Check and process referral rewards (called after user uses credits)
+app.post('/api/referral/check-reward', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+
+        // Check if this user was referred and the referral is pending
+        const { data: referral } = await supabaseAdmin
+            .from('referrals')
+            .select('*')
+            .eq('referred_id', user.id)
+            .eq('status', 'pending')
+            .single();
+
+        if (!referral) {
+            return res.json({ rewarded: false, message: 'No pending referral' });
+        }
+
+        // Check if the referred user has used their free credits (has generations)
+        const { count: generationCount } = await supabaseAdmin
+            .from('generations')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+        if (!generationCount || generationCount < 1) {
+            return res.json({ rewarded: false, message: 'Use the app first to unlock referral rewards' });
+        }
+
+        // User has used the app - time to reward both parties!
+        console.log(`🎁 Processing referral reward for ${user.email}`);
+
+        // Update referral status
+        await supabaseAdmin
+            .from('referrals')
+            .update({ status: 'rewarded', rewarded_at: new Date().toISOString() })
+            .eq('id', referral.id);
+
+        // Add credits to referrer
+        const { data: referrerCredits } = await supabaseAdmin
+            .from('credits')
+            .select('balance')
+            .eq('id', referral.referrer_id)
+            .single();
+
+        await supabaseAdmin
+            .from('credits')
+            .upsert({
+                id: referral.referrer_id,
+                balance: (referrerCredits?.balance || 0) + REFERRAL_REWARD_CREDITS,
+                updated_at: new Date().toISOString()
+            });
+
+        // Update referrer's profile referral count
+        await supabaseAdmin.rpc('increment_profile_stat', {
+            user_id: referral.referrer_id,
+            stat_name: 'total_referrals',
+            increment_by: 1
+        });
+
+        // Add credits to referred user (this user)
+        const { data: userCredits } = await supabaseAdmin
+            .from('credits')
+            .select('balance')
+            .eq('id', user.id)
+            .single();
+
+        await supabaseAdmin
+            .from('credits')
+            .upsert({
+                id: user.id,
+                balance: (userCredits?.balance || 0) + REFERRAL_REWARD_CREDITS,
+                updated_at: new Date().toISOString()
+            });
+
+        console.log(`✅ Referral reward complete! Both users got ${REFERRAL_REWARD_CREDITS} credits`);
+
+        res.json({
+            rewarded: true,
+            credits: REFERRAL_REWARD_CREDITS,
+            message: `You both earned ${REFERRAL_REWARD_CREDITS} free credits!`
+        });
+    } catch (error) {
+        console.error('Check reward error:', error);
+        res.status(500).json({ error: 'Failed to check referral reward' });
+    }
+});
+
+// ===================
+// LEADERBOARD SYSTEM
+// ===================
+
+// Get leaderboard data
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const category = req.query.category || 'generations';
+        const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+
+        let orderColumn;
+        switch (category) {
+            case 'referrals':
+                orderColumn = 'total_referrals';
+                break;
+            case 'spent':
+                orderColumn = 'total_spent';
+                break;
+            case 'active':
+                orderColumn = 'last_active';
+                break;
+            case 'generations':
+            default:
+                orderColumn = 'total_generations';
+        }
+
+        // Get leaderboard from profiles
+        const { data: profiles, error } = await supabaseAdmin
+            .from('profiles')
+            .select('id, display_name, total_generations, total_referrals, total_spent, last_active, created_at')
+            .eq('show_on_leaderboard', true)
+            .order(orderColumn, { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+
+        // Anonymize and format the data
+        const leaderboard = (profiles || []).map((p, index) => ({
+            rank: index + 1,
+            displayName: p.display_name || `User${p.id.slice(0, 4)}`,
+            totalGenerations: p.total_generations || 0,
+            totalReferrals: p.total_referrals || 0,
+            totalSpent: (p.total_spent || 0) / 100, // Convert cents to dollars
+            lastActive: p.last_active,
+            memberSince: p.created_at
+        }));
+
+        res.json({ category, leaderboard });
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        res.status(500).json({ error: 'Failed to get leaderboard' });
+    }
+});
+
+// Get user's rank on leaderboard
+app.get('/api/leaderboard/my-rank', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+
+        // Get user's profile
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile) {
+            return res.json({ ranks: null });
+        }
+
+        // Calculate ranks for each category
+        const { count: genRank } = await supabaseAdmin
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .gt('total_generations', profile.total_generations || 0);
+
+        const { count: refRank } = await supabaseAdmin
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .gt('total_referrals', profile.total_referrals || 0);
+
+        const { count: spentRank } = await supabaseAdmin
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .gt('total_spent', profile.total_spent || 0);
+
+        res.json({
+            ranks: {
+                generations: (genRank || 0) + 1,
+                referrals: (refRank || 0) + 1,
+                spent: (spentRank || 0) + 1
+            },
+            stats: {
+                totalGenerations: profile.total_generations || 0,
+                totalReferrals: profile.total_referrals || 0,
+                totalSpent: (profile.total_spent || 0) / 100
+            }
+        });
+    } catch (error) {
+        console.error('My rank error:', error);
+        res.status(500).json({ error: 'Failed to get rank' });
+    }
+});
+
+// Update user's leaderboard preferences
+app.post('/api/leaderboard/preferences', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+
+        const { displayName, showOnLeaderboard } = req.body;
+
+        const updates = {};
+        if (displayName !== undefined) updates.display_name = displayName.slice(0, 20);
+        if (showOnLeaderboard !== undefined) updates.show_on_leaderboard = showOnLeaderboard;
+        updates.updated_at = new Date().toISOString();
+
+        await supabaseAdmin
+            .from('profiles')
+            .upsert({ id: user.id, ...updates });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Preferences error:', error);
+        res.status(500).json({ error: 'Failed to update preferences' });
+    }
+});
+
+// Update profile stats (called after generations, payments, etc.)
+async function updateProfileStats(userId, type, amount = 1) {
+    try {
+        const updates = { updated_at: new Date().toISOString(), last_active: new Date().toISOString() };
+
+        switch (type) {
+            case 'generation':
+                // Use raw SQL for increment
+                await supabaseAdmin.rpc('increment_profile_stat', {
+                    user_id: userId,
+                    stat_name: 'total_generations',
+                    increment_by: amount
+                });
+                return;
+            case 'spent':
+                await supabaseAdmin.rpc('increment_profile_stat', {
+                    user_id: userId,
+                    stat_name: 'total_spent',
+                    increment_by: amount
+                });
+                return;
+            case 'referral':
+                await supabaseAdmin.rpc('increment_profile_stat', {
+                    user_id: userId,
+                    stat_name: 'total_referrals',
+                    increment_by: amount
+                });
+                return;
+        }
+
+        // Fallback: just update last_active
+        await supabaseAdmin
+            .from('profiles')
+            .upsert({ id: userId, last_active: new Date().toISOString() });
+    } catch (e) {
+        console.error('Update profile stats error:', e);
+    }
+}
 
 // ===================
 // STRIPE PAYMENT ROUTES
@@ -1634,56 +2181,137 @@ app.get('/api/admin/stats', async (req, res) => {
     if (!admin) return res.status(403).json({ error: 'Unauthorized' });
 
     try {
+        // Time boundaries
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
         // Get user count
         const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
         const totalUsers = users?.length || 0;
 
-        // Users in last 24h
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        // User breakdowns
         const newUsersToday = users?.filter(u => u.created_at > oneDayAgo).length || 0;
+        const newUsersWeek = users?.filter(u => u.created_at > sevenDaysAgo).length || 0;
 
-        // Active users (signed in within 7 days)
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const activeUsers = users?.filter(u => u.last_sign_in_at && u.last_sign_in_at > sevenDaysAgo).length || 0;
+        // Active users
+        const activeToday = users?.filter(u => u.last_sign_in_at && u.last_sign_in_at > oneDayAgo).length || 0;
+        const activeWeek = users?.filter(u => u.last_sign_in_at && u.last_sign_in_at > sevenDaysAgo).length || 0;
+        const activeMonth = users?.filter(u => u.last_sign_in_at && u.last_sign_in_at > thirtyDaysAgo).length || 0;
 
-        // Total generations
+        // Generations
         const { count: totalGenerations } = await supabaseAdmin
             .from('generations')
             .select('*', { count: 'exact', head: true });
 
-        // Generations today
         const { count: generationsToday } = await supabaseAdmin
             .from('generations')
             .select('*', { count: 'exact', head: true })
             .gte('created_at', oneDayAgo);
 
-        // Total revenue from payments
-        const { data: payments } = await supabaseAdmin
-            .from('payments')
-            .select('amount');
-        const totalRevenue = (payments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+        const { count: generationsWeek } = await supabaseAdmin
+            .from('generations')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', sevenDaysAgo);
 
-        // Active subscriptions
+        // Users with generations
+        const { data: genUsers } = await supabaseAdmin
+            .from('generations')
+            .select('user_id');
+        const usersWithGenerations = new Set(genUsers?.map(g => g.user_id) || []).size;
+
+        // Successful openers (marked as worked)
+        const { count: successfulOpeners } = await supabaseAdmin
+            .from('generations')
+            .select('*', { count: 'exact', head: true })
+            .not('winning_opener', 'is', null);
+
+        // Average generations per user
+        const avgGenerationsPerUser = usersWithGenerations > 0
+            ? ((totalGenerations || 0) / usersWithGenerations).toFixed(1)
+            : '0';
+
+        // Payments & Revenue
+        const { data: allPayments } = await supabaseAdmin
+            .from('payments')
+            .select('amount, type, created_at');
+
+        const totalRevenue = (allPayments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+        const revenueToday = (allPayments || [])
+            .filter(p => p.created_at > oneDayAgo)
+            .reduce((sum, p) => sum + (p.amount || 0), 0);
+        const revenueWeek = (allPayments || [])
+            .filter(p => p.created_at > sevenDaysAgo)
+            .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+        // Revenue by type
+        const subscriptionRevenue = (allPayments || [])
+            .filter(p => p.type === 'subscription')
+            .reduce((sum, p) => sum + (p.amount || 0), 0);
+        const creditPackRevenue = (allPayments || [])
+            .filter(p => p.type !== 'subscription')
+            .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+        // Subscriptions
         const { count: activeSubscriptions } = await supabaseAdmin
             .from('subscriptions')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'active');
 
-        // Total credits in circulation
+        const { count: newSubsWeek } = await supabaseAdmin
+            .from('subscriptions')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', sevenDaysAgo);
+
+        const { count: cancelledSubs } = await supabaseAdmin
+            .from('subscriptions')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'cancelled');
+
+        // Credits
         const { data: credits } = await supabaseAdmin
             .from('credits')
-            .select('balance');
-        const totalCredits = (credits || []).reduce((sum, c) => sum + (c.balance || 0), 0);
+            .select('balance, total_purchased');
+        const totalCreditsInCirculation = (credits || []).reduce((sum, c) => sum + (c.balance || 0), 0);
+        const freeCreditsGiven = totalUsers * 5; // Assuming 5 free credits per signup
 
         res.json({
+            // Users
             totalUsers,
             newUsersToday,
-            activeUsers,
+            newUsersWeek,
+            usersWithGenerations,
+
+            // Activity
+            activeToday,
+            activeWeek,
+            activeMonth,
+
+            // Generations
             totalGenerations: totalGenerations || 0,
             generationsToday: generationsToday || 0,
-            totalRevenue: totalRevenue / 100, // Convert cents to dollars
+            generationsWeek: generationsWeek || 0,
+            avgGenerationsPerUser,
+            successfulOpeners: successfulOpeners || 0,
+
+            // Revenue (convert cents to dollars)
+            totalRevenue: totalRevenue / 100,
+            revenueToday: revenueToday / 100,
+            revenueWeek: revenueWeek / 100,
+            subscriptionRevenue: subscriptionRevenue / 100,
+            creditPackRevenue: creditPackRevenue / 100,
+
+            // Subscriptions
             activeSubscriptions: activeSubscriptions || 0,
-            totalCredits
+            newSubsWeek: newSubsWeek || 0,
+            cancelledSubs: cancelledSubs || 0,
+            churnRate: activeSubscriptions > 0 ? ((cancelledSubs || 0) / ((activeSubscriptions || 0) + (cancelledSubs || 0)) * 100).toFixed(1) : '0',
+
+            // Credits
+            totalCreditsInCirculation,
+            creditsSoldToday: 0, // Would need to track separately
+            creditsUsedToday: generationsToday || 0, // Approximation
+            freeCreditsGiven
         });
     } catch (error) {
         console.error('Admin stats error:', error);

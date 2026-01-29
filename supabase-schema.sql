@@ -185,12 +185,19 @@ CREATE TABLE IF NOT EXISTS referrals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     referrer_id UUID REFERENCES auth.users(id),
     referred_id UUID REFERENCES auth.users(id) UNIQUE,
+    status TEXT DEFAULT 'pending', -- pending, confirmed, rewarded
+    rewarded_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add new columns if they don't exist
+ALTER TABLE referrals ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE referrals ADD COLUMN IF NOT EXISTS rewarded_at TIMESTAMPTZ;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals(referred_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status);
 
 -- Enable RLS
 ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
@@ -205,19 +212,43 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'referrals' AND policyname = 'Users can insert referrals') THEN
         CREATE POLICY "Users can insert referrals" ON referrals FOR INSERT WITH CHECK (auth.uid() = referred_id);
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'referrals' AND policyname = 'Service role full access to referrals') THEN
+        CREATE POLICY "Service role full access to referrals" ON referrals FOR ALL USING (auth.role() = 'service_role');
+    END IF;
 END $$;
 
 
 -- =============================================================================
--- PROFILES TABLE (optional - for user preferences)
+-- PROFILES TABLE (user profiles & leaderboard data)
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     referral_code TEXT UNIQUE,
+    display_name TEXT,
+    show_on_leaderboard BOOLEAN DEFAULT true,
+    total_generations INTEGER DEFAULT 0,
+    total_referrals INTEGER DEFAULT 0,
+    total_spent INTEGER DEFAULT 0, -- in cents
+    last_active TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add new columns if they don't exist
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_on_leaderboard BOOLEAN DEFAULT true;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_generations INTEGER DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_referrals INTEGER DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_spent INTEGER DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ DEFAULT NOW();
+
+-- Indexes for leaderboard queries
+CREATE INDEX IF NOT EXISTS idx_profiles_generations ON profiles(total_generations DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_referrals ON profiles(total_referrals DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_spent ON profiles(total_spent DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_active ON profiles(last_active DESC);
 
 -- Enable RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -225,16 +256,29 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 -- RLS Policies
 DO $$
 BEGIN
+    -- Users can view their own profile
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can view own profile') THEN
         CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
     END IF;
 
+    -- Users can update their own profile
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can update own profile') THEN
         CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
     END IF;
 
+    -- Users can insert their own profile
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can insert own profile') THEN
         CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+    END IF;
+
+    -- Anyone can view leaderboard profiles (public)
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Anyone can view leaderboard profiles') THEN
+        CREATE POLICY "Anyone can view leaderboard profiles" ON profiles FOR SELECT USING (show_on_leaderboard = true);
+    END IF;
+
+    -- Service role full access
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Service role full access to profiles') THEN
+        CREATE POLICY "Service role full access to profiles" ON profiles FOR ALL USING (auth.role() = 'service_role');
     END IF;
 END $$;
 
@@ -300,6 +344,35 @@ BEGIN
         CREATE POLICY "Service role full access to admin_logs" ON admin_logs FOR ALL USING (auth.role() = 'service_role');
     END IF;
 END $$;
+
+
+-- =============================================================================
+-- HELPER FUNCTIONS
+-- =============================================================================
+
+-- Function to increment profile stats safely
+CREATE OR REPLACE FUNCTION increment_profile_stat(
+    user_id UUID,
+    stat_name TEXT,
+    increment_by INTEGER DEFAULT 1
+)
+RETURNS void AS $$
+BEGIN
+    -- Upsert profile if doesn't exist
+    INSERT INTO profiles (id, total_generations, total_referrals, total_spent, last_active)
+    VALUES (user_id, 0, 0, 0, NOW())
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Update the specific stat
+    IF stat_name = 'total_generations' THEN
+        UPDATE profiles SET total_generations = COALESCE(total_generations, 0) + increment_by, last_active = NOW() WHERE id = user_id;
+    ELSIF stat_name = 'total_referrals' THEN
+        UPDATE profiles SET total_referrals = COALESCE(total_referrals, 0) + increment_by, last_active = NOW() WHERE id = user_id;
+    ELSIF stat_name = 'total_spent' THEN
+        UPDATE profiles SET total_spent = COALESCE(total_spent, 0) + increment_by, last_active = NOW() WHERE id = user_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- =============================================================================

@@ -124,14 +124,14 @@
                     <span class="feature-title">History</span>
                 </button>
 
-                <button class="feature-card" onclick="showAnalysis()">
-                    <span class="feature-icon">🧠</span>
-                    <span class="feature-title">Insights</span>
+                <button class="feature-card leaderboard-card" onclick="showLeaderboard()">
+                    <span class="feature-icon">🏆</span>
+                    <span class="feature-title">Leaderboard</span>
                 </button>
 
-                <button class="feature-card" onclick="showAnalytics()">
-                    <span class="feature-icon">📊</span>
-                    <span class="feature-title">Analytics</span>
+                <button class="feature-card referral-card" onclick="showReferrals()">
+                    <span class="feature-icon">🎁</span>
+                    <span class="feature-title">Free Credits</span>
                 </button>
 
             </div>
@@ -166,19 +166,12 @@
                     <h3>Pick your vibe</h3>
                     <div class="modes">
                         <label class="mode-option">
-                            <input type="radio" name="mode" value="chaotic" checked>
-                            <span class="mode-card" data-mode="chaotic">
-                                <span class="mode-emoji">🌀</span>
-                                <span class="mode-name">Chaotic</span>
-                                <span class="mode-rate" id="rate-chaotic"></span>
-                            </span>
-                        </label>
-                        <label class="mode-option">
-                            <input type="radio" name="mode" value="flirty">
+                            <input type="radio" name="mode" value="flirty" checked>
                             <span class="mode-card" data-mode="flirty">
                                 <span class="mode-emoji">😏</span>
                                 <span class="mode-name">Flirty</span>
-                                <span class="mode-rate" id="rate-flirty"></span>
+                                <span class="mode-desc">Smooth & charming</span>
+                                <span class="mode-cost">1 credit</span>
                             </span>
                         </label>
                         <label class="mode-option">
@@ -186,33 +179,18 @@
                             <span class="mode-card" data-mode="unhinged">
                                 <span class="mode-emoji">🔥</span>
                                 <span class="mode-name">Unhinged</span>
-                                <span class="mode-rate" id="rate-unhinged"></span>
-                            </span>
-                        </label>
-                    </div>
-                    <div class="modes modes-row-2">
-                        <label class="mode-option">
-                            <input type="radio" name="mode" value="mysterious">
-                            <span class="mode-card" data-mode="mysterious">
-                                <span class="mode-emoji">🎭</span>
-                                <span class="mode-name">Mysterious</span>
-                                <span class="mode-rate" id="rate-mysterious"></span>
+                                <span class="mode-desc">Explicit & bold</span>
+                                <span class="mode-cost">1 credit</span>
                             </span>
                         </label>
                         <label class="mode-option">
-                            <input type="radio" name="mode" value="dadjoke">
-                            <span class="mode-card" data-mode="dadjoke">
-                                <span class="mode-emoji">👴</span>
-                                <span class="mode-name">Dad Joke</span>
-                                <span class="mode-rate" id="rate-dadjoke"></span>
-                            </span>
-                        </label>
-                        <label class="mode-option">
-                            <input type="radio" name="mode" value="poetic">
-                            <span class="mode-card" data-mode="poetic">
-                                <span class="mode-emoji">🎨</span>
-                                <span class="mode-name">Poetic</span>
-                                <span class="mode-rate" id="rate-poetic"></span>
+                            <input type="radio" name="mode" value="mixed">
+                            <span class="mode-card mode-card-premium" data-mode="mixed">
+                                <span class="mode-badge">BEST</span>
+                                <span class="mode-emoji">✨</span>
+                                <span class="mode-name">All Styles</span>
+                                <span class="mode-desc">Flirty + Unhinged + More</span>
+                                <span class="mode-cost">2 credits</span>
                             </span>
                         </label>
                     </div>
@@ -292,6 +270,23 @@
                 🧠 View Match Insights
             </button>
 
+            <!-- Follow-up Response Section -->
+            <div class="followup-section" id="followup-section">
+                <div class="followup-header">
+                    <span class="followup-icon">💬</span>
+                    <span class="followup-title">They replied?</span>
+                </div>
+                <p class="followup-desc">Paste their response and get your next move</p>
+                <div class="followup-input-wrap">
+                    <textarea id="followup-input" placeholder="Type or paste what they said..." rows="2"></textarea>
+                    <button class="followup-send-btn" onclick="getFollowupSuggestion()">→</button>
+                </div>
+                <div class="followup-results hidden" id="followup-results">
+                    <p class="followup-label">Your next move:</p>
+                    <div class="followup-suggestions" id="followup-suggestions"></div>
+                </div>
+            </div>
+
             <div class="results-actions">
                 <button class="btn-secondary" onclick="generateOpeners()">🔄 Regenerate</button>
                 <button class="btn-primary" onclick="shareResults()">📤 Share</button>
@@ -311,6 +306,111 @@
                     <span class="empty-icon">📜</span>
                     <p>No history yet</p>
                     <span class="empty-hint">Your generated openers will appear here</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboard-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showHome()">← Back</button>
+                <span class="screen-title">Leaderboard</span>
+                <button class="btn-icon" onclick="loadLeaderboard()">🔄</button>
+            </div>
+
+            <!-- Category Tabs -->
+            <div class="leaderboard-tabs">
+                <button class="lb-tab active" onclick="switchLeaderboardTab('generations')">🔥 Gens</button>
+                <button class="lb-tab" onclick="switchLeaderboardTab('referrals')">🎁 Referrals</button>
+                <button class="lb-tab" onclick="switchLeaderboardTab('spent')">💰 Spent</button>
+                <button class="lb-tab" onclick="switchLeaderboardTab('active')">⚡ Active</button>
+            </div>
+
+            <!-- My Rank Card -->
+            <div class="my-rank-card" id="my-rank-card">
+                <div class="my-rank-header">Your Rank</div>
+                <div class="my-rank-stats">
+                    <div class="my-rank-stat">
+                        <span class="my-rank-value" id="my-rank-gen">#-</span>
+                        <span class="my-rank-label">Generations</span>
+                    </div>
+                    <div class="my-rank-stat">
+                        <span class="my-rank-value" id="my-rank-ref">#-</span>
+                        <span class="my-rank-label">Referrals</span>
+                    </div>
+                    <div class="my-rank-stat">
+                        <span class="my-rank-value" id="my-rank-spent">#-</span>
+                        <span class="my-rank-label">Spent</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard List -->
+            <div class="leaderboard-list" id="leaderboard-list">
+                <div class="lb-loading">Loading leaderboard...</div>
+            </div>
+        </div>
+
+        <!-- Referrals Screen -->
+        <div id="referrals-screen" class="screen">
+            <div class="screen-header">
+                <button class="back-btn" onclick="showHome()">← Back</button>
+                <span class="screen-title">Free Credits</span>
+                <span></span>
+            </div>
+
+            <div class="referral-hero">
+                <span class="referral-hero-icon">🎁</span>
+                <h2>Get 25 Free Credits</h2>
+                <p>For each friend who joins and uses the app</p>
+            </div>
+
+            <div class="referral-how">
+                <h3>How it works</h3>
+                <div class="referral-steps">
+                    <div class="referral-step">
+                        <span class="step-num">1</span>
+                        <span class="step-text">Share your unique link</span>
+                    </div>
+                    <div class="referral-step">
+                        <span class="step-num">2</span>
+                        <span class="step-text">Friend signs up & confirms email</span>
+                    </div>
+                    <div class="referral-step">
+                        <span class="step-num">3</span>
+                        <span class="step-text">Friend uses the app</span>
+                    </div>
+                    <div class="referral-step success">
+                        <span class="step-num">🎉</span>
+                        <span class="step-text">You BOTH get 25 credits!</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="referral-code-section">
+                <p class="referral-code-label">Your referral link</p>
+                <div class="referral-code-box">
+                    <input type="text" id="referral-link" readonly value="Loading...">
+                    <button class="copy-referral-btn" onclick="copyReferralLink()">📋 Copy</button>
+                </div>
+                <button class="share-referral-btn" onclick="shareReferralLink()">📤 Share Link</button>
+            </div>
+
+            <div class="referral-stats">
+                <h3>Your Referrals</h3>
+                <div class="referral-stat-grid">
+                    <div class="referral-stat">
+                        <span class="referral-stat-value" id="ref-pending">0</span>
+                        <span class="referral-stat-label">Pending</span>
+                    </div>
+                    <div class="referral-stat">
+                        <span class="referral-stat-value" id="ref-rewarded">0</span>
+                        <span class="referral-stat-label">Rewarded</span>
+                    </div>
+                    <div class="referral-stat highlight">
+                        <span class="referral-stat-value" id="ref-earned">0</span>
+                        <span class="referral-stat-label">Credits Earned</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -451,32 +551,49 @@
             <!-- Dashboard Tab -->
             <div class="admin-content" id="admin-tab-dashboard">
                 <h2 class="admin-section-title">📊 Dashboard Overview</h2>
+                <p class="admin-section-desc">Click any card for breakdown</p>
                 <div class="admin-dashboard-grid">
-                    <div class="admin-dash-card">
+                    <div class="admin-dash-card expandable" onclick="toggleDashBreakdown('users', this)">
                         <span class="admin-dash-value" id="dash-users">-</span>
                         <span class="admin-dash-label">Total Users</span>
                         <span class="admin-dash-sub" id="dash-users-today">+0 today</span>
+                        <span class="expand-icon">▼</span>
                     </div>
-                    <div class="admin-dash-card">
+                    <div class="admin-dash-card expandable" onclick="toggleDashBreakdown('active', this)">
                         <span class="admin-dash-value" id="dash-active">-</span>
                         <span class="admin-dash-label">Active (7d)</span>
+                        <span class="expand-icon">▼</span>
                     </div>
-                    <div class="admin-dash-card highlight">
+                    <div class="admin-dash-card highlight expandable" onclick="toggleDashBreakdown('revenue', this)">
                         <span class="admin-dash-value" id="dash-revenue">$0</span>
                         <span class="admin-dash-label">Revenue</span>
+                        <span class="expand-icon">▼</span>
                     </div>
-                    <div class="admin-dash-card">
+                    <div class="admin-dash-card expandable" onclick="toggleDashBreakdown('subs', this)">
                         <span class="admin-dash-value" id="dash-subs">-</span>
                         <span class="admin-dash-label">Subscribers</span>
+                        <span class="expand-icon">▼</span>
                     </div>
-                    <div class="admin-dash-card">
+                    <div class="admin-dash-card expandable" onclick="toggleDashBreakdown('gens', this)">
                         <span class="admin-dash-value" id="dash-gens">-</span>
                         <span class="admin-dash-label">Generations</span>
                         <span class="admin-dash-sub" id="dash-gens-today">+0 today</span>
+                        <span class="expand-icon">▼</span>
                     </div>
-                    <div class="admin-dash-card">
+                    <div class="admin-dash-card expandable" onclick="toggleDashBreakdown('credits', this)">
                         <span class="admin-dash-value" id="dash-credits">-</span>
                         <span class="admin-dash-label">Credits Live</span>
+                        <span class="expand-icon">▼</span>
+                    </div>
+                </div>
+                <!-- Breakdown Panel -->
+                <div class="dash-breakdown-panel hidden" id="dash-breakdown-panel">
+                    <div class="breakdown-header">
+                        <span class="breakdown-title" id="breakdown-title">Breakdown</span>
+                        <button class="breakdown-close" onclick="closeDashBreakdown()">&times;</button>
+                    </div>
+                    <div class="breakdown-content" id="breakdown-content">
+                        <!-- Dynamic content -->
                     </div>
                 </div>
             </div>
@@ -653,13 +770,28 @@
                 <!-- Referral -->
                 <div class="settings-card" id="settings-referral" style="display: none;">
                     <span class="card-title">🎁 Invite Friends</span>
-                    <p class="card-desc">Get 3 free credits for each signup</p>
-                    <div class="referral-row">
-                        <input type="text" id="referral-link-input" readonly>
-                        <button class="btn-copy-small" onclick="copyReferralLink()">Copy</button>
-                    </div>
-                    <button class="btn-share" onclick="shareReferral()">Share Link</button>
+                    <p class="card-desc">Get 25 free credits when they use the app!</p>
+                    <button class="btn-share" onclick="showReferrals()">View Referral Program →</button>
                     <p class="referral-stats" id="referral-stats"></p>
+                </div>
+
+                <!-- Leaderboard Settings -->
+                <div class="settings-card" id="settings-leaderboard" style="display: none;">
+                    <span class="card-title">🏆 Leaderboard</span>
+                    <div class="settings-field">
+                        <label class="field-label">Display Name</label>
+                        <div class="field-row">
+                            <input type="text" id="leaderboard-display-name" placeholder="Your display name" maxlength="20">
+                            <button class="btn-save-small" onclick="saveLeaderboardName()">✓</button>
+                        </div>
+                    </div>
+                    <div class="card-row" style="margin-top: 12px;">
+                        <span class="card-label">Show on Leaderboard</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="leaderboard-visible-toggle" onchange="toggleLeaderboardVisibility()">
+                            <span class="toggle-track"></span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Notifications -->
@@ -766,11 +898,12 @@
             <div class="modal-content disclaimer-modal-content">
                 <span class="disclaimer-icon">💳</span>
                 <h2>How Credits Work</h2>
-                <p class="disclaimer-text">Each generation costs <strong>1 credit</strong>.</p>
+                <p class="disclaimer-text">Credits power your generations.</p>
                 <ul class="disclaimer-list">
                     <li>🎁 You get <strong>5 free credits</strong> on signup</li>
-                    <li>🔥 Each opener generation uses 1 credit</li>
-                    <li>💬 Conversation coaching also uses 1 credit</li>
+                    <li>😏 Flirty or Unhinged mode: <strong>1 credit</strong></li>
+                    <li>✨ All Styles mode: <strong>2 credits</strong> (6 openers!)</li>
+                    <li>💬 Conversation coaching: <strong>1 credit</strong></li>
                     <li>💰 Buy more credits anytime from settings</li>
                 </ul>
                 <button class="btn-primary btn-full" onclick="acceptCreditCostInfo()">Got it!</button>

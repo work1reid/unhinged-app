@@ -617,6 +617,381 @@ body {
     color: rgba(255, 255, 255, 0.3);
 }
 
+/* Special feature cards */
+.feature-card.leaderboard-card {
+    border-color: rgba(255, 215, 0, 0.3);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 140, 0, 0.04) 100%);
+}
+
+.feature-card.referral-card {
+    border-color: rgba(74, 222, 128, 0.3);
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.08) 0%, rgba(34, 197, 94, 0.04) 100%);
+}
+
+/* ===================
+   LEADERBOARD SCREEN
+   =================== */
+
+.leaderboard-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.lb-tab {
+    flex: 1;
+    min-width: fit-content;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.lb-tab.active {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 140, 0, 0.1) 100%);
+    border-color: rgba(255, 215, 0, 0.4);
+    color: #ffd700;
+}
+
+.my-rank-card {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.my-rank-header {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+.my-rank-stats {
+    display: flex;
+    justify-content: space-around;
+}
+
+.my-rank-stat {
+    text-align: center;
+}
+
+.my-rank-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #8b5cf6;
+}
+
+.my-rank-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: calc(100vh - 320px);
+    overflow-y: auto;
+}
+
+.lb-loading {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 40px;
+}
+
+.lb-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+    transition: all 0.2s;
+}
+
+.lb-item.top-3 {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 140, 0, 0.05) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.lb-item.rank-1 {
+    border-color: rgba(255, 215, 0, 0.5);
+}
+
+.lb-item.rank-2 {
+    border-color: rgba(192, 192, 192, 0.4);
+}
+
+.lb-item.rank-3 {
+    border-color: rgba(205, 127, 50, 0.4);
+}
+
+.lb-rank {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.lb-item.rank-1 .lb-rank {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #000;
+}
+
+.lb-item.rank-2 .lb-rank {
+    background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
+    color: #000;
+}
+
+.lb-item.rank-3 .lb-rank {
+    background: linear-gradient(135deg, #cd7f32, #b8702b);
+    color: #fff;
+}
+
+.lb-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.lb-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lb-sub {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.lb-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffd700;
+}
+
+/* ===================
+   REFERRALS SCREEN
+   =================== */
+
+.referral-hero {
+    text-align: center;
+    padding: 24px 16px;
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.15) 0%, rgba(34, 197, 94, 0.08) 100%);
+    border-radius: 20px;
+    margin-bottom: 20px;
+}
+
+.referral-hero-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.referral-hero h2 {
+    font-size: 24px;
+    color: #4ade80;
+    margin-bottom: 8px;
+}
+
+.referral-hero p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.referral-how {
+    margin-bottom: 20px;
+}
+
+.referral-how h3 {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.referral-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.referral-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.referral-step.success {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.step-num {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.referral-step.success .step-num {
+    background: rgba(74, 222, 128, 0.2);
+    font-size: 16px;
+}
+
+.step-text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.referral-step.success .step-text {
+    color: #4ade80;
+    font-weight: 600;
+}
+
+.referral-code-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.referral-code-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.referral-code-box {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.referral-code-box input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 12px;
+    color: #fff;
+    font-size: 13px;
+    font-family: monospace;
+}
+
+.copy-referral-btn {
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.copy-referral-btn:active {
+    background: rgba(74, 222, 128, 0.3);
+}
+
+.share-referral-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.share-referral-btn:active {
+    transform: scale(0.98);
+}
+
+.referral-stats {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.referral-stats h3 {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 12px;
+}
+
+.referral-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.referral-stat {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px 8px;
+}
+
+.referral-stat.highlight {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.referral-stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.referral-stat.highlight .referral-stat-value {
+    color: #4ade80;
+}
+
+.referral-stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+}
+
 /* ===================
    SCREEN HEADER
    =================== */
@@ -984,6 +1359,20 @@ body {
     color: #2ecc71;
 }
 
+.share-btn {
+    background: rgba(139, 92, 246, 0.15);
+    color: rgba(139, 92, 246, 0.9);
+}
+
+.share-btn:hover {
+    background: rgba(139, 92, 246, 0.25);
+}
+
+.share-btn:active {
+    background: rgba(139, 92, 246, 0.4);
+    transform: scale(0.98);
+}
+
 .worked-btn {
     background: rgba(255, 107, 107, 0.15);
     color: rgba(255, 107, 107, 0.8);
@@ -1163,6 +1552,157 @@ body {
 
 .prediction-card.recommended .prediction-mode::after {
     content: " ⭐";
+}
+
+/* Follow-up Response Section */
+.followup-section {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.followup-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.followup-icon {
+    font-size: 20px;
+}
+
+.followup-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+}
+
+.followup-desc {
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 12px;
+}
+
+.followup-input-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.followup-input-wrap textarea {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 12px;
+    color: white;
+    font-size: 14px;
+    resize: none;
+    font-family: inherit;
+}
+
+.followup-input-wrap textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.followup-input-wrap textarea:focus {
+    outline: none;
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.followup-send-btn {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.followup-send-btn:hover {
+    transform: scale(1.05);
+}
+
+.followup-send-btn:active {
+    transform: scale(0.95);
+}
+
+.followup-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.followup-results {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.followup-results.hidden {
+    display: none;
+}
+
+.followup-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.followup-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.followup-suggestion {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.followup-suggestion:active {
+    transform: scale(0.98);
+    background: rgba(139, 92, 246, 0.2);
+}
+
+.followup-suggestion.copied {
+    border-color: rgba(46, 204, 113, 0.5);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.followup-style {
+    font-size: 11px;
+    color: rgba(139, 92, 246, 0.9);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.followup-text {
+    font-size: 14px;
+    color: white;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.followup-loading {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 12px;
 }
 
 .results-actions {
@@ -1525,6 +2065,40 @@ body {
     font-weight: 400;
     color: rgba(255, 255, 255, 0.5);
     margin-bottom: 12px;
+}
+
+/* Settings Fields */
+.settings-field {
+    margin-bottom: 12px;
+}
+
+.field-label {
+    display: block;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.field-row {
+    display: flex;
+    gap: 8px;
+}
+
+.field-row input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.field-row input:focus {
+    outline: none;
+    border-color: rgba(139, 92, 246, 0.5);
 }
 
 /* Pack Options */
@@ -3212,6 +3786,133 @@ body {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.4);
     margin-top: 4px;
+}
+
+/* Expandable Dashboard Cards */
+.admin-dash-card.expandable {
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.admin-dash-card.expandable:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.admin-dash-card.expandable.active {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.admin-dash-card.highlight.expandable.active {
+    background: rgba(74, 222, 128, 0.2);
+}
+
+.expand-icon {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    font-size: 8px;
+    color: rgba(255, 255, 255, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.admin-dash-card.active .expand-icon {
+    transform: rotate(180deg);
+}
+
+/* Dashboard Breakdown Panel */
+.dash-breakdown-panel {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-top: 16px;
+    overflow: hidden;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dash-breakdown-panel.hidden {
+    display: none;
+}
+
+.breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.breakdown-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.breakdown-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.breakdown-close:hover {
+    color: #fff;
+}
+
+.breakdown-content {
+    padding: 16px;
+}
+
+.breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.breakdown-row:last-child {
+    border-bottom: none;
+}
+
+.breakdown-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+}
+
+.breakdown-value {
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.breakdown-value.positive {
+    color: #4ade80;
+}
+
+.breakdown-value.negative {
+    color: #f87171;
+}
+
+.breakdown-loading {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 20px;
 }
 
 /* Admin Activity */

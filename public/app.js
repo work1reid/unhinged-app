@@ -383,6 +383,8 @@ async function giveSignupBonus() {
 
         if (existing) {
             // Already has credits record, no bonus
+            // But ensure profile exists for leaderboard
+            await ensureProfileExists();
             return;
         }
 
@@ -400,6 +402,9 @@ async function giveSignupBonus() {
             purchasedCredits = SIGNUP_BONUS_CREDITS;
             showToast(`🎁 ${SIGNUP_BONUS_CREDITS} free credits added!`);
         }
+
+        // Create profile for leaderboard
+        await ensureProfileExists();
     } catch (e) {
         // Record doesn't exist, give bonus
         try {
@@ -413,9 +418,46 @@ async function giveSignupBonus() {
                 });
             purchasedCredits = SIGNUP_BONUS_CREDITS;
             showToast(`🎁 ${SIGNUP_BONUS_CREDITS} free credits added!`);
+            await ensureProfileExists();
         } catch (e2) {
             console.error('Signup bonus failed:', e2);
         }
+    }
+}
+
+// Ensure user has a profile for leaderboard
+async function ensureProfileExists() {
+    if (!currentUser || !supabaseClient) return;
+
+    try {
+        const { data: existing } = await supabaseClient
+            .from('profiles')
+            .select('id')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (!existing) {
+            // Generate referral code from user ID
+            const referralCode = currentUser.id.slice(0, 8).toUpperCase();
+            const displayName = currentUser.email?.split('@')[0] || 'User';
+
+            await supabaseClient
+                .from('profiles')
+                .insert({
+                    id: currentUser.id,
+                    referral_code: referralCode,
+                    display_name: displayName,
+                    show_on_leaderboard: true,
+                    total_generations: 0,
+                    total_referrals: 0,
+                    total_spent: 0,
+                    last_active: new Date().toISOString()
+                });
+
+            console.log('Profile created for leaderboard');
+        }
+    } catch (e) {
+        console.error('Ensure profile failed:', e);
     }
 }
 
@@ -466,20 +508,20 @@ async function checkWeeklyBonus() {
     }
 }
 
-async function useCredit() {
-    if (!currentUser || !supabaseClient || purchasedCredits <= 0) return false;
+async function useCredit(amount = 1) {
+    if (!currentUser || !supabaseClient || purchasedCredits < amount) return false;
 
     try {
         const { error } = await supabaseClient
             .from('credits')
             .update({
-                balance: purchasedCredits - 1,
+                balance: purchasedCredits - amount,
                 updated_at: new Date().toISOString()
             })
             .eq('id', currentUser.id);
 
         if (!error) {
-            purchasedCredits--;
+            purchasedCredits -= amount;
             return true;
         }
     } catch (e) {
@@ -617,20 +659,8 @@ async function cancelSubscription() {
 }
 
 // ===================
-// REFERRAL SYSTEM
+// REFERRAL URL HANDLING
 // ===================
-function getReferralCode() {
-    if (!currentUser) return null;
-    // Generate short code from user ID
-    return currentUser.id.substring(0, 8).toUpperCase();
-}
-
-function getReferralLink() {
-    const code = getReferralCode();
-    if (!code) return null;
-    return `https://unhingedai.app/?ref=${code}`;
-}
-
 async function checkReferral() {
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get('ref');
@@ -650,97 +680,28 @@ async function processReferralOnSignup() {
     if (!refCode) return;
 
     try {
-        // Find referrer by code (first 8 chars of their user ID)
-        const { data: users } = await supabaseClient
-            .from('profiles')
-            .select('id')
-            .ilike('id', `${refCode.toLowerCase()}%`);
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/referral/apply', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ referralCode: refCode })
+        });
 
-        if (users && users.length > 0) {
-            const referrerId = users[0].id;
+        const data = await response.json();
 
-            // Don't self-refer
-            if (referrerId === currentUser.id) {
-                localStorage.removeItem('referral_code');
-                return;
-            }
-
-            // Check if already referred
-            const { data: existing } = await supabaseClient
-                .from('referrals')
-                .select('id')
-                .eq('referred_id', currentUser.id)
-                .single();
-
-            if (existing) {
-                localStorage.removeItem('referral_code');
-                return;
-            }
-
-            // Record referral
-            await supabaseClient.from('referrals').insert({
-                referrer_id: referrerId,
-                referred_id: currentUser.id
-            });
-
-            // Award credits to referrer (3 credits)
-            const { data: referrerCredits } = await supabaseClient
-                .from('credits')
-                .select('balance')
-                .eq('id', referrerId)
-                .single();
-
-            await supabaseClient.from('credits').upsert({
-                id: referrerId,
-                balance: (referrerCredits?.balance || 0) + 3,
-                updated_at: new Date().toISOString()
-            });
-
-            // Award credits to new user (3 credits)
-            await addCredits(3);
-
-            showToast('🎉 You got 3 bonus credits!');
-            console.log('Referral processed');
+        if (data.success) {
+            showToast('🎁 Referral applied! Use the app to unlock 25 credits for both of you!');
+            console.log('Referral applied - pending reward');
         }
 
         localStorage.removeItem('referral_code');
     } catch (e) {
         console.error('Referral processing failed:', e);
+        localStorage.removeItem('referral_code');
     }
-}
-
-async function copyReferralLink() {
-    const link = getReferralLink();
-    if (!link) {
-        showToast('Sign in to get your referral link');
-        return;
-    }
-
-    try {
-        await navigator.clipboard.writeText(link);
-        showToast('Referral link copied!');
-    } catch (e) {
-        showToast('Failed to copy');
-    }
-}
-
-async function shareReferral() {
-    const link = getReferralLink();
-    if (!link) {
-        showToast('Sign in to share');
-        return;
-    }
-
-    const text = `Get unhinged dating openers with AI! Use my link for 3 free credits: ${link}`;
-
-    if (navigator.share) {
-        try {
-            await navigator.share({ title: 'Unhinged AI', text });
-            return;
-        } catch {}
-    }
-
-    await copyReferralLink();
 }
 
 // ===================
@@ -1419,6 +1380,217 @@ function showHistory() {
     showScreen('history-screen');
 }
 
+// ===================
+// LEADERBOARD
+// ===================
+
+let currentLeaderboardCategory = 'generations';
+
+function showLeaderboard() {
+    loadLeaderboard();
+    loadMyRank();
+    showScreen('leaderboard-screen');
+}
+
+function switchLeaderboardTab(category) {
+    currentLeaderboardCategory = category;
+
+    // Update tab styles
+    document.querySelectorAll('.lb-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.textContent.toLowerCase().includes(category.slice(0, 3)));
+    });
+
+    loadLeaderboard();
+}
+
+async function loadLeaderboard() {
+    const list = document.getElementById('leaderboard-list');
+    list.innerHTML = '<div class="lb-loading">Loading leaderboard...</div>';
+
+    try {
+        const response = await fetch(`/api/leaderboard?category=${currentLeaderboardCategory}&limit=50`);
+        const data = await response.json();
+
+        if (!data.leaderboard?.length) {
+            list.innerHTML = '<div class="lb-loading">No data yet. Be the first!</div>';
+            return;
+        }
+
+        list.innerHTML = data.leaderboard.map((item, i) => {
+            const isTop3 = item.rank <= 3;
+            let value;
+
+            switch (currentLeaderboardCategory) {
+                case 'referrals':
+                    value = item.totalReferrals;
+                    break;
+                case 'spent':
+                    value = `$${item.totalSpent.toFixed(0)}`;
+                    break;
+                case 'active':
+                    value = getTimeAgo(new Date(item.lastActive));
+                    break;
+                default:
+                    value = item.totalGenerations;
+            }
+
+            return `
+                <div class="lb-item ${isTop3 ? 'top-3' : ''} rank-${item.rank}">
+                    <div class="lb-rank">${item.rank <= 3 ? ['🥇', '🥈', '🥉'][item.rank - 1] : item.rank}</div>
+                    <div class="lb-info">
+                        <div class="lb-name">${item.displayName}</div>
+                        <div class="lb-sub">Member since ${new Date(item.memberSince).toLocaleDateString()}</div>
+                    </div>
+                    <div class="lb-value">${value}</div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Leaderboard error:', e);
+        list.innerHTML = '<div class="lb-loading">Failed to load leaderboard</div>';
+    }
+}
+
+async function loadMyRank() {
+    if (!currentUser) {
+        document.getElementById('my-rank-card').style.display = 'none';
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/leaderboard/my-rank', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        const data = await response.json();
+
+        if (data.ranks) {
+            document.getElementById('my-rank-gen').textContent = `#${data.ranks.generations}`;
+            document.getElementById('my-rank-ref').textContent = `#${data.ranks.referrals}`;
+            document.getElementById('my-rank-spent').textContent = `#${data.ranks.spent}`;
+            document.getElementById('my-rank-card').style.display = 'block';
+        }
+    } catch (e) {
+        console.error('My rank error:', e);
+    }
+}
+
+// ===================
+// REFERRALS
+// ===================
+
+let userReferralInfo = null;
+
+function showReferrals() {
+    loadReferralInfo();
+    showScreen('referrals-screen');
+}
+
+async function loadReferralInfo() {
+    if (!currentUser) {
+        document.getElementById('referral-link').value = 'Sign in to get your referral link';
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/referral/info', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        const data = await response.json();
+        userReferralInfo = data;
+
+        document.getElementById('referral-link').value = data.referralLink || 'Error loading link';
+        document.getElementById('ref-pending').textContent = data.stats?.pending || 0;
+        document.getElementById('ref-rewarded').textContent = data.stats?.rewarded || 0;
+        document.getElementById('ref-earned').textContent = data.stats?.creditsEarned || 0;
+    } catch (e) {
+        console.error('Referral info error:', e);
+        document.getElementById('referral-link').value = 'Error loading link';
+    }
+}
+
+function copyReferralLink() {
+    const input = document.getElementById('referral-link');
+    navigator.clipboard.writeText(input.value);
+    showToast('Link copied!');
+}
+
+async function shareReferralLink() {
+    const link = document.getElementById('referral-link').value;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'Get Unhinged AI',
+                text: 'Get 25 free credits when you join! 🔥',
+                url: link
+            });
+        } catch (e) {
+            if (e.name !== 'AbortError') {
+                copyReferralLink();
+            }
+        }
+    } else {
+        copyReferralLink();
+    }
+}
+
+// Apply referral code from URL on signup
+async function applyReferralFromUrl() {
+    if (!currentUser) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+
+    if (!refCode) return;
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        await fetch('/api/referral/apply', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ referralCode: refCode })
+        });
+
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        console.log('📨 Referral code applied:', refCode);
+    } catch (e) {
+        console.error('Apply referral error:', e);
+    }
+}
+
+// Check for referral reward after generation
+async function checkReferralReward() {
+    if (!currentUser) return;
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch('/api/referral/check-reward', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.rewarded) {
+            showToast(`🎁 Referral bonus: +${data.credits} credits!`);
+            await loadCredits(); // Refresh credit display
+        }
+    } catch (e) {
+        console.error('Check referral reward error:', e);
+    }
+}
+
 let analysisFromResults = false;
 
 function showAnalysis() {
@@ -1697,18 +1869,24 @@ async function updateSettingsUI() {
 
         // Show referral section
         referralSection.style.display = 'block';
-        referralLinkInput.value = getReferralLink() || '';
-
-        // Show delete account button
-        document.getElementById('delete-account-btn').style.display = 'block';
 
         // Get referral stats
         const referralCount = await getReferralCount();
         if (referralCount > 0) {
-            referralStats.textContent = `${referralCount} friend${referralCount > 1 ? 's' : ''} invited • ${referralCount * 3} credits earned`;
+            referralStats.textContent = `${referralCount} friend${referralCount > 1 ? 's' : ''} referred`;
         } else {
             referralStats.textContent = '';
         }
+
+        // Show leaderboard settings
+        const leaderboardSection = document.getElementById('settings-leaderboard');
+        if (leaderboardSection) {
+            leaderboardSection.style.display = 'block';
+            await loadLeaderboardSettings();
+        }
+
+        // Show delete account button
+        document.getElementById('delete-account-btn').style.display = 'block';
     } else {
         emailEl.textContent = 'Not signed in';
         usernameSection.style.display = 'none';
@@ -1716,6 +1894,7 @@ async function updateSettingsUI() {
         signinBtn.style.display = 'block';
         creditsSection.style.display = 'none';
         referralSection.style.display = 'none';
+        document.getElementById('settings-leaderboard')?.style && (document.getElementById('settings-leaderboard').style.display = 'none');
         document.getElementById('delete-account-btn').style.display = 'none';
     }
 }
@@ -1727,12 +1906,92 @@ async function getReferralCount() {
         const { count } = await supabaseClient
             .from('referrals')
             .select('*', { count: 'exact', head: true })
-            .eq('referrer_id', currentUser.id);
+            .eq('referrer_id', currentUser.id)
+            .eq('status', 'rewarded');
 
         return count || 0;
     } catch (e) {
         console.error('Get referral count failed:', e);
         return 0;
+    }
+}
+
+// Leaderboard Settings
+async function loadLeaderboardSettings() {
+    if (!currentUser || !supabaseClient) return;
+
+    try {
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('display_name, show_on_leaderboard')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (profile) {
+            const nameInput = document.getElementById('leaderboard-display-name');
+            const visibleToggle = document.getElementById('leaderboard-visible-toggle');
+
+            if (nameInput) nameInput.value = profile.display_name || '';
+            if (visibleToggle) visibleToggle.checked = profile.show_on_leaderboard !== false;
+        }
+    } catch (e) {
+        console.error('Load leaderboard settings failed:', e);
+    }
+}
+
+async function saveLeaderboardName() {
+    if (!currentUser || !supabaseClient) {
+        showToast('Sign in to save');
+        return;
+    }
+
+    const nameInput = document.getElementById('leaderboard-display-name');
+    const displayName = nameInput.value.trim().slice(0, 20);
+
+    if (!displayName) {
+        showToast('Enter a display name');
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        await fetch('/api/leaderboard/preferences', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ displayName })
+        });
+
+        showToast('Display name saved!');
+    } catch (e) {
+        console.error('Save display name failed:', e);
+        showToast('Failed to save');
+    }
+}
+
+async function toggleLeaderboardVisibility() {
+    if (!currentUser || !supabaseClient) return;
+
+    const toggle = document.getElementById('leaderboard-visible-toggle');
+    const showOnLeaderboard = toggle.checked;
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        await fetch('/api/leaderboard/preferences', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ showOnLeaderboard })
+        });
+
+        showToast(showOnLeaderboard ? 'Visible on leaderboard' : 'Hidden from leaderboard');
+    } catch (e) {
+        console.error('Toggle visibility failed:', e);
+        toggle.checked = !showOnLeaderboard; // Revert
     }
 }
 
@@ -1911,26 +2170,38 @@ async function incrementSubscriberUsage() {
     }
 }
 
-async function canGenerate() {
+async function canGenerate(mode = null) {
+    // Mixed mode costs 2 credits, others cost 1
+    const creditCost = mode === 'mixed' ? 2 : 1;
+
     // Subscribers get unlimited (capped at 150/week)
     if (currentSubscription) {
         const weeklyUsage = getSubscriberWeeklyUsage();
-        if (weeklyUsage < SUBSCRIBER_WEEKLY_CAP) {
+        if (weeklyUsage + creditCost <= SUBSCRIBER_WEEKLY_CAP) {
             return true;
         }
         // Subscriber hit cap, can still use purchased credits
     }
 
     const freeRemaining = await getRemainingFreeGenerations();
-    return freeRemaining > 0 || purchasedCredits > 0;
+
+    // Check if user has enough total credits
+    const totalAvailable = freeRemaining + purchasedCredits;
+    return totalAvailable >= creditCost;
 }
 
-async function consumeGeneration() {
+async function consumeGeneration(mode = null) {
+    // Mixed mode costs 2 credits, others cost 1
+    const creditCost = mode === 'mixed' ? 2 : 1;
+
     // Subscribers use their weekly allowance first
     if (currentSubscription) {
         const weeklyUsage = getSubscriberWeeklyUsage();
-        if (weeklyUsage < SUBSCRIBER_WEEKLY_CAP) {
-            incrementSubscriberUsage();
+        // For mixed mode, subscribers use 2 from their weekly cap
+        if (weeklyUsage + creditCost <= SUBSCRIBER_WEEKLY_CAP) {
+            for (let i = 0; i < creditCost; i++) {
+                incrementSubscriberUsage();
+            }
             await updateStats();
             await updateGenerateUsage();
             scheduleReminder();
@@ -1941,12 +2212,23 @@ async function consumeGeneration() {
 
     const freeRemaining = await getRemainingFreeGenerations();
 
-    if (freeRemaining > 0) {
-        // Use free generation
-        await incrementUsage();
-    } else if (purchasedCredits > 0) {
-        // Use purchased credit
-        await useCredit();
+    if (freeRemaining >= creditCost) {
+        // Use free generation(s)
+        for (let i = 0; i < creditCost; i++) {
+            await incrementUsage();
+        }
+    } else if (freeRemaining > 0 && creditCost > 1) {
+        // Mixed mode: use remaining free + purchased credits
+        await incrementUsage(); // Use the 1 free
+        if (purchasedCredits >= 1) {
+            await useCredit(1); // Use 1 purchased for the rest
+        }
+        const data = getUsageData();
+        data.total = (data.total || 0) + 1;
+        saveUsageData(data);
+    } else if (purchasedCredits >= creditCost) {
+        // Use purchased credits
+        await useCredit(creditCost);
         // Still track in usage data for history
         const data = getUsageData();
         data.total = (data.total || 0) + 1;
@@ -2690,11 +2972,13 @@ async function generateOpeners() {
         return;
     }
 
-    const canGen = await canGenerate();
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    const canGen = await canGenerate(mode);
     if (!canGen) {
         const nextReset = getNextResetTime();
         const hoursUntil = Math.ceil((nextReset - new Date()) / (1000 * 60 * 60));
-        showToast(`No generations left. Resets in ${hoursUntil}h or buy credits!`);
+        const creditCost = mode === 'mixed' ? 2 : 1;
+        showToast(`Need ${creditCost} credit${creditCost > 1 ? 's' : ''} - resets in ${hoursUntil}h or buy credits!`);
         return;
     }
 
@@ -2735,8 +3019,11 @@ async function generateOpenersAfterDisclaimer() {
         currentOpeners = data.openers;
         currentAnalysis = data.analysis;
         currentProfile = data.profile;
-        await consumeGeneration();
+        await consumeGeneration(mode);
         saveToHistory(data.matchName, data.openers, mode, data.analysis);
+
+        // Check for referral reward (async, don't wait)
+        checkReferralReward();
 
         document.getElementById('match-name').textContent = data.matchName || 'Match';
         displayOpeners(currentOpeners);
@@ -2772,6 +3059,9 @@ function displayOpeners(openers) {
                 <button class="copy-btn" onclick="event.stopPropagation(); copyOpener('${opener.text.replace(/'/g, "\\'")}', this.closest('.opener-card'))">
                     📋 Copy
                 </button>
+                <button class="share-btn" onclick="event.stopPropagation(); shareOpener(${index})">
+                    📤 Share
+                </button>
                 <button class="worked-btn" onclick="event.stopPropagation(); markWorked(${index}, this)">
                     ✓ This worked!
                 </button>
@@ -2779,6 +3069,248 @@ function displayOpeners(openers) {
         `;
         list.appendChild(card);
     });
+}
+
+// Shareable Result Card Generator (Canvas-based)
+async function shareOpener(index) {
+    const opener = currentOpeners[index];
+    if (!opener) return;
+
+    showToast('Creating shareable card...');
+
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Card dimensions (Instagram story friendly)
+        const width = 1080;
+        const height = 1350;
+        canvas.width = width;
+        canvas.height = height;
+
+        // Background gradient
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#1a1a2e');
+        gradient.addColorStop(0.5, '#16213e');
+        gradient.addColorStop(1, '#0f3460');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        // Decorative elements
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.1)';
+        ctx.beginPath();
+        ctx.arc(100, 200, 300, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(74, 222, 128, 0.08)';
+        ctx.beginPath();
+        ctx.arc(width - 150, height - 300, 400, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Logo/Brand at top
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🔥 UNHINGED AI', width / 2, 120);
+
+        // Subtitle
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('Dating App Opener Generator', width / 2, 175);
+
+        // Mode badge
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.3)';
+        const badgeWidth = 200;
+        const badgeHeight = 50;
+        const badgeX = (width - badgeWidth) / 2;
+        const badgeY = 230;
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 25);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(`${opener.emoji} ${opener.type}`, width / 2, badgeY + 34);
+
+        // Main opener card
+        const cardPadding = 60;
+        const cardY = 340;
+        const cardHeight = 700;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.beginPath();
+        ctx.roundRect(cardPadding, cardY, width - cardPadding * 2, cardHeight, 24);
+        ctx.fill();
+
+        // Border glow
+        ctx.strokeStyle = 'rgba(139, 92, 246, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Opener text
+        ctx.fillStyle = '#fff';
+        ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'left';
+
+        // Word wrap the opener text
+        const maxWidth = width - cardPadding * 2 - 60;
+        const lineHeight = 52;
+        const words = opener.text.split(' ');
+        let line = '';
+        let y = cardY + 80;
+
+        for (let i = 0; i < words.length; i++) {
+            const testLine = line + words[i] + ' ';
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && i > 0) {
+                ctx.fillText(line, cardPadding + 30, y);
+                line = words[i] + ' ';
+                y += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, cardPadding + 30, y);
+
+        // Quote marks decoration
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.3)';
+        ctx.font = '120px Georgia, serif';
+        ctx.fillText('"', cardPadding + 10, cardY + 80);
+
+        // Call to action at bottom
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.font = '24px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Get your own unhinged openers at', width / 2, height - 100);
+
+        ctx.fillStyle = '#8b5cf6';
+        ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('unhinged.ai', width / 2, height - 60);
+
+        // Convert to blob and share/download
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], 'unhinged-opener.png', { type: 'image/png' });
+
+            // Try native share if available
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'My Unhinged Opener',
+                        text: 'Check out this opener from Unhinged AI!'
+                    });
+                    showToast('Shared! 🚀');
+                    return;
+                } catch (e) {
+                    if (e.name !== 'AbortError') {
+                        console.log('Share failed, falling back to download');
+                    }
+                }
+            }
+
+            // Fallback: download the image
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'unhinged-opener.png';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Downloaded! Share it anywhere 📤');
+        }, 'image/png', 1.0);
+
+    } catch (e) {
+        console.error('Share error:', e);
+        showToast('Failed to create share card');
+    }
+}
+
+// Follow-up Response Suggestions
+async function getFollowupSuggestion() {
+    const input = document.getElementById('followup-input');
+    const theirReply = input.value.trim();
+
+    if (!theirReply) {
+        showToast('Enter what they replied first');
+        return;
+    }
+
+    const btn = document.querySelector('.followup-send-btn');
+    const resultsDiv = document.getElementById('followup-results');
+    const suggestionsDiv = document.getElementById('followup-suggestions');
+
+    // Check credits
+    const canGen = await canGenerate();
+    if (!canGen) {
+        showToast('No credits left!');
+        return;
+    }
+
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.textContent = '...';
+    resultsDiv.classList.remove('hidden');
+    suggestionsDiv.innerHTML = '<div class="followup-loading">Thinking...</div>';
+
+    try {
+        // Get context: what opener was used and their reply
+        const openerUsed = currentOpeners[0]?.text || '';
+        const matchName = document.getElementById('match-name').textContent || 'Match';
+
+        const response = await fetch('/api/followup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                openerUsed,
+                theirReply,
+                matchName,
+                profile: currentProfile || null
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.message || 'Failed to generate');
+            suggestionsDiv.innerHTML = '';
+            resultsDiv.classList.add('hidden');
+            return;
+        }
+
+        // Consume a credit
+        await consumeGeneration();
+
+        // Display suggestions
+        suggestionsDiv.innerHTML = '';
+        (data.suggestions || []).forEach(suggestion => {
+            const div = document.createElement('div');
+            div.className = 'followup-suggestion';
+            div.onclick = () => copyFollowup(suggestion.text, div);
+            div.innerHTML = `
+                <div class="followup-style">${suggestion.emoji || '💬'} ${suggestion.style || 'Suggestion'}</div>
+                <p class="followup-text">${suggestion.text}</p>
+            `;
+            suggestionsDiv.appendChild(div);
+        });
+
+        // Clear input for next round
+        input.value = '';
+
+    } catch (e) {
+        console.error('Followup error:', e);
+        showToast('Error getting suggestions');
+        resultsDiv.classList.add('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '→';
+    }
+}
+
+function copyFollowup(text, el) {
+    navigator.clipboard.writeText(text);
+    document.querySelectorAll('.followup-suggestion').forEach(s => s.classList.remove('copied'));
+    el.classList.add('copied');
+    showToast('Copied!');
+    setTimeout(() => el.classList.remove('copied'), 2000);
 }
 
 function copyOpener(text, card) {
@@ -2871,7 +3403,49 @@ async function shareResults() {
 // ===================
 // UTILITIES
 // ===================
+
+// Compress image before sending to API (saves 40-60% on API costs)
+function compressImage(file, maxWidth = 1024, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Scale down if larger than maxWidth
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to base64 with compression
+                const base64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+                console.log(`📸 Compressed: ${file.size} → ${Math.round(base64.length * 0.75)} bytes (${Math.round((1 - (base64.length * 0.75) / file.size) * 100)}% smaller)`);
+                resolve(base64);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 function fileToBase64(file) {
+    // Use compression for images
+    if (file.type.startsWith('image/')) {
+        return compressImage(file);
+    }
+    // Fallback for non-images
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -3035,8 +3609,190 @@ async function loadDashboardStats() {
         document.getElementById('dash-subs').textContent = stats.activeSubscriptions || 0;
         document.getElementById('dash-gens').textContent = stats.totalGenerations || 0;
         document.getElementById('dash-credits').textContent = stats.totalCreditsInCirculation || 0;
+
+        // Store stats for breakdown
+        window.dashboardStats = stats;
     } catch (e) {
         console.error('Load dashboard stats error:', e);
+    }
+}
+
+// Dashboard Breakdown Functions
+let activeBreakdownCard = null;
+
+async function toggleDashBreakdown(type, cardEl) {
+    const panel = document.getElementById('dash-breakdown-panel');
+    const content = document.getElementById('breakdown-content');
+    const title = document.getElementById('breakdown-title');
+
+    // If clicking same card, close it
+    if (activeBreakdownCard === cardEl) {
+        closeDashBreakdown();
+        return;
+    }
+
+    // Remove active from previous card
+    if (activeBreakdownCard) {
+        activeBreakdownCard.classList.remove('active');
+    }
+
+    // Set new active card
+    activeBreakdownCard = cardEl;
+    cardEl.classList.add('active');
+
+    // Show loading
+    content.innerHTML = '<div class="breakdown-loading">Loading...</div>';
+    panel.classList.remove('hidden');
+
+    // Load breakdown data
+    const stats = window.dashboardStats || {};
+
+    switch(type) {
+        case 'users':
+            title.textContent = '👥 Users Breakdown';
+            content.innerHTML = `
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Total registered</span>
+                    <span class="breakdown-value">${stats.totalUsers || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Signed up today</span>
+                    <span class="breakdown-value positive">+${stats.newUsersToday || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">This week</span>
+                    <span class="breakdown-value">+${stats.newUsersWeek || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Have generated</span>
+                    <span class="breakdown-value">${stats.usersWithGenerations || '-'}</span>
+                </div>
+            `;
+            break;
+
+        case 'active':
+            title.textContent = '⚡ Activity Breakdown';
+            content.innerHTML = `
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Active today</span>
+                    <span class="breakdown-value">${stats.activeToday || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Active this week</span>
+                    <span class="breakdown-value">${stats.activeWeek || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Active this month</span>
+                    <span class="breakdown-value">${stats.activeMonth || '-'}</span>
+                </div>
+            `;
+            break;
+
+        case 'revenue':
+            title.textContent = '💰 Revenue Breakdown';
+            content.innerHTML = `
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Total revenue</span>
+                    <span class="breakdown-value positive">$${(stats.totalRevenue || 0).toFixed(2)}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Today</span>
+                    <span class="breakdown-value positive">+$${(stats.revenueToday || 0).toFixed(2)}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">This week</span>
+                    <span class="breakdown-value">$${(stats.revenueWeek || 0).toFixed(2)}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">From subscriptions</span>
+                    <span class="breakdown-value">$${(stats.subscriptionRevenue || 0).toFixed(2)}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">From credit packs</span>
+                    <span class="breakdown-value">$${(stats.creditPackRevenue || 0).toFixed(2)}</span>
+                </div>
+            `;
+            break;
+
+        case 'subs':
+            title.textContent = '⭐ Subscribers Breakdown';
+            content.innerHTML = `
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Active subscriptions</span>
+                    <span class="breakdown-value">${stats.activeSubscriptions || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">New this week</span>
+                    <span class="breakdown-value positive">+${stats.newSubsWeek || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Cancelled</span>
+                    <span class="breakdown-value negative">${stats.cancelledSubs || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Churn rate</span>
+                    <span class="breakdown-value">${stats.churnRate || '0'}%</span>
+                </div>
+            `;
+            break;
+
+        case 'gens':
+            title.textContent = '✨ Generations Breakdown';
+            content.innerHTML = `
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Total all time</span>
+                    <span class="breakdown-value">${stats.totalGenerations || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Today</span>
+                    <span class="breakdown-value positive">+${stats.generationsToday || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">This week</span>
+                    <span class="breakdown-value">${stats.generationsWeek || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Avg per user</span>
+                    <span class="breakdown-value">${stats.avgGenerationsPerUser || '-'}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Marked "worked"</span>
+                    <span class="breakdown-value positive">${stats.successfulOpeners || 0}</span>
+                </div>
+            `;
+            break;
+
+        case 'credits':
+            title.textContent = '💳 Credits Breakdown';
+            content.innerHTML = `
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Total in circulation</span>
+                    <span class="breakdown-value">${stats.totalCreditsInCirculation || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Credits sold today</span>
+                    <span class="breakdown-value positive">+${stats.creditsSoldToday || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Credits used today</span>
+                    <span class="breakdown-value negative">-${stats.creditsUsedToday || 0}</span>
+                </div>
+                <div class="breakdown-row">
+                    <span class="breakdown-label">Free credits given</span>
+                    <span class="breakdown-value">${stats.freeCreditsGiven || 0}</span>
+                </div>
+            `;
+            break;
+    }
+}
+
+function closeDashBreakdown() {
+    const panel = document.getElementById('dash-breakdown-panel');
+    panel.classList.add('hidden');
+
+    if (activeBreakdownCard) {
+        activeBreakdownCard.classList.remove('active');
+        activeBreakdownCard = null;
     }
 }
 
