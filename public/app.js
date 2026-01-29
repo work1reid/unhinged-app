@@ -258,8 +258,8 @@ async function addCredits(amount) {
     return false;
 }
 
-const SIGNUP_BONUS_CREDITS = 5;
-const WEEKLY_BONUS_CREDITS = 1;
+const SIGNUP_BONUS_CREDITS = 1;
+const WEEKLY_BONUS_CREDITS = 0; // Disabled - was bleeding money
 
 async function giveSignupBonus() {
     if (!currentUser || !supabaseClient) return;
@@ -320,6 +320,8 @@ function getMondayOfWeek(date) {
 }
 
 async function checkWeeklyBonus() {
+    // Weekly bonus disabled - was hemorrhaging money
+    if (WEEKLY_BONUS_CREDITS <= 0) return;
     if (!currentUser || !supabaseClient) return;
 
     try {
@@ -348,7 +350,7 @@ async function checkWeeklyBonus() {
                 .update({ last_weekly_bonus: now.toISOString() })
                 .eq('id', currentUser.id);
 
-            showToast(`🎁 Weekly bonus: +1 credit!`);
+            showToast(`🎁 Weekly bonus: +${WEEKLY_BONUS_CREDITS} credit!`);
         }
     } catch (e) {
         console.error('Weekly bonus check failed:', e);
@@ -884,12 +886,12 @@ async function showCreditsBreakdown() {
     if (currentSubscription) {
         subscriptionHtml = `
             <div class="breakdown-row">
-                <span class="breakdown-label">🔥 Weekly Pro</span>
+                <span class="breakdown-label">🔥 Weekly Unlimited</span>
                 <span class="breakdown-value active">Active</span>
             </div>
             <div class="breakdown-row sub">
-                <span class="breakdown-label">Next refresh</span>
-                <span class="breakdown-value">+25 credits/week</span>
+                <span class="breakdown-label">Fair use</span>
+                <span class="breakdown-value">150/week cap</span>
             </div>
         `;
     }
@@ -1253,7 +1255,7 @@ async function checkPaymentStatus() {
         await loadSubscription();
 
         if (paymentType === 'subscription') {
-            showToast(`🎉 Subscribed! 25 credits added weekly.`);
+            showToast(`🎉 Subscribed! Unlimited generations unlocked.`);
         } else {
             showToast(`🎉 Credits added to your account!`);
         }
@@ -1489,26 +1491,42 @@ async function updateGenerateUsage() {
     const packsSection = document.getElementById('buy-credits-section');
 
     if (el) {
-        const freeRemaining = await getRemainingFreeGenerations();
-        const totalRemaining = freeRemaining + purchasedCredits;
-
-        if (totalRemaining > 0) {
-            if (freeRemaining > 0) {
-                el.textContent = `${freeRemaining} free${purchasedCredits > 0 ? ` + ${purchasedCredits} credits` : ''}`;
+        // Subscribers see their weekly usage
+        if (currentSubscription) {
+            const weeklyUsage = getSubscriberWeeklyUsage();
+            const remaining = SUBSCRIBER_WEEKLY_CAP - weeklyUsage;
+            if (remaining > 0) {
+                el.textContent = `Unlimited (${remaining} left this week)`;
             } else {
-                el.textContent = `${purchasedCredits} credits`;
+                el.textContent = purchasedCredits > 0 ? `${purchasedCredits} bonus credits` : 'Weekly limit reached';
             }
         } else {
-            const nextReset = getNextResetTime();
-            const hoursUntil = Math.ceil((nextReset - new Date()) / (1000 * 60 * 60));
-            el.textContent = `Resets in ${hoursUntil}h`;
+            const freeRemaining = await getRemainingFreeGenerations();
+            const totalRemaining = freeRemaining + purchasedCredits;
+
+            if (totalRemaining > 0) {
+                if (freeRemaining > 0) {
+                    el.textContent = `${freeRemaining} free${purchasedCredits > 0 ? ` + ${purchasedCredits} credits` : ''}`;
+                } else {
+                    el.textContent = `${purchasedCredits} credits`;
+                }
+            } else {
+                const nextReset = getNextResetTime();
+                const hoursUntil = Math.ceil((nextReset - new Date()) / (1000 * 60 * 60));
+                el.textContent = `Resets in ${hoursUntil}h`;
+            }
         }
     }
 
-    // Show/hide buy credits section when running low
+    // Show/hide buy credits section when running low (not for subscribers unless at cap)
     if (packsSection) {
-        const freeRemaining = await getRemainingFreeGenerations();
-        packsSection.style.display = (freeRemaining <= 3 && currentUser) ? 'block' : 'none';
+        if (currentSubscription) {
+            const weeklyUsage = getSubscriberWeeklyUsage();
+            packsSection.style.display = (weeklyUsage >= SUBSCRIBER_WEEKLY_CAP - 10 && currentUser) ? 'block' : 'none';
+        } else {
+            const freeRemaining = await getRemainingFreeGenerations();
+            packsSection.style.display = (freeRemaining <= 1 && currentUser) ? 'block' : 'none';
+        }
     }
 }
 
@@ -1539,15 +1557,15 @@ async function updateSettingsUI() {
                 subscriptionStatus.innerHTML = `
                     <div class="sub-active">
                         <span class="sub-badge">✓ Active</span>
-                        <span class="sub-plan">Weekly Pro - 25 credits/week</span>
+                        <span class="sub-plan">Weekly Unlimited - $9.99/week</span>
                     </div>
                     <button class="btn-cancel-sub" onclick="cancelSubscription()">Cancel Subscription</button>
                 `;
             } else {
                 subscriptionStatus.innerHTML = `
                     <button class="btn-subscribe" onclick="buySubscription('weekly')">
-                        <span class="sub-offer">🔥 Weekly Pro</span>
-                        <span class="sub-details">25 credits every week</span>
+                        <span class="sub-offer">🔥 Weekly Unlimited</span>
+                        <span class="sub-details">Unlimited generations - $9.99/week</span>
                     </button>
                 `;
             }
@@ -1700,12 +1718,58 @@ async function getRemainingGenerations() {
     return freeRemaining + purchasedCredits;
 }
 
+const SUBSCRIBER_WEEKLY_CAP = 150;
+
+function getSubscriberWeeklyUsage() {
+    const data = getUsageData();
+    const thisMonday = getMondayOfWeek(new Date());
+    const lastReset = data.subWeeklyReset ? new Date(data.subWeeklyReset) : null;
+
+    // Reset if new week
+    if (!lastReset || lastReset < thisMonday) {
+        data.subWeeklyUsage = 0;
+        data.subWeeklyReset = thisMonday.toISOString();
+        saveUsageData(data);
+    }
+
+    return data.subWeeklyUsage || 0;
+}
+
+function incrementSubscriberUsage() {
+    const data = getUsageData();
+    data.subWeeklyUsage = (data.subWeeklyUsage || 0) + 1;
+    data.total = (data.total || 0) + 1;
+    saveUsageData(data);
+}
+
 async function canGenerate() {
+    // Subscribers get unlimited (capped at 150/week)
+    if (currentSubscription) {
+        const weeklyUsage = getSubscriberWeeklyUsage();
+        if (weeklyUsage < SUBSCRIBER_WEEKLY_CAP) {
+            return true;
+        }
+        // Subscriber hit cap, can still use purchased credits
+    }
+
     const freeRemaining = await getRemainingFreeGenerations();
     return freeRemaining > 0 || purchasedCredits > 0;
 }
 
 async function consumeGeneration() {
+    // Subscribers use their weekly allowance first
+    if (currentSubscription) {
+        const weeklyUsage = getSubscriberWeeklyUsage();
+        if (weeklyUsage < SUBSCRIBER_WEEKLY_CAP) {
+            incrementSubscriberUsage();
+            await updateStats();
+            await updateGenerateUsage();
+            scheduleReminder();
+            return;
+        }
+        // Subscriber hit cap, fall through to use credits
+    }
+
     const freeRemaining = await getRemainingFreeGenerations();
 
     if (freeRemaining > 0) {

@@ -1835,13 +1835,14 @@ body {
     transform: scale(0.97);
 }
 
-.pack-starter {
-    border-color: rgba(255, 255, 255, 0.15);
+.pack-impulse {
+    border-color: rgba(255, 193, 7, 0.4);
+    background: linear-gradient(160deg, rgba(255,193,7,0.1) 0%, rgba(255,152,0,0.05) 100%);
 }
 
-.pack-starter:hover {
-    border-color: rgba(255, 255, 255, 0.3);
-    background: linear-gradient(160deg, rgba(46,46,76,0.8) 0%, rgba(32,43,72,0.6) 100%);
+.pack-impulse:hover {
+    border-color: rgba(255, 193, 7, 0.6);
+    box-shadow: 0 4px 20px rgba(255, 193, 7, 0.15);
 }
 
 .pack-value {
@@ -1886,10 +1887,16 @@ body {
 }
 
 .pack-price {
-    font-size: 18px;
-    font-weight: 700;
-    color: white;
-    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 4px;
+}
+
+.pack-price-small {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .pack-savings {

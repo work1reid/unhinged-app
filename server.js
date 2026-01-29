@@ -858,27 +858,27 @@ Return ONLY the JSON, no other text.`;
 
 // Credit pack options
 const CREDIT_PACKS = {
-    starter: {
-        name: '5 Generation Credits',
-        description: 'Quick top-up for a few more openers',
-        credits: 5,
-        price: 200 // $2.00 in cents
+    impulse: {
+        name: '10 Generation Credits',
+        description: 'Weekend boost - perfect for a few dates',
+        credits: 10,
+        price: 495 // $4.95 in cents
     },
     value: {
         name: '30 Generation Credits',
-        description: 'Best value - save 33% per credit!',
+        description: 'Best value - save 46% per credit!',
         credits: 30,
-        price: 799 // $7.99 in cents
+        price: 795 // $7.95 in cents
     }
 };
 
 // Subscription options
 const SUBSCRIPTIONS = {
     weekly: {
-        name: 'Weekly Pro',
-        description: '25 credits per week, auto-renews',
-        credits: 25,
-        price: 500, // $5.00 in cents
+        name: 'Weekly Unlimited',
+        description: 'Unlimited generations per week (fair use: 150/week)',
+        credits: 150, // Fair use cap
+        price: 999, // $9.99 in cents
         interval: 'week'
     }
 };
