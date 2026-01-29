@@ -334,17 +334,31 @@ function sanitizeForPrompt(text) {
 function moderateOutput(text) {
     if (!text) return text;
 
-    // List of terms to filter (slurs, extreme content)
+    // List of terms to filter (slurs, hate speech, extreme content)
+    // Sexual content is allowed for unhinged mode, but discriminatory content is not
     const blockedTerms = [
-        // Add specific slurs and hate speech terms here
-        // This is a basic filter - consider using a proper moderation API
+        // Racial slurs
+        'nigger', 'nigga', 'chink', 'gook', 'spic', 'wetback', 'kike', 'beaner',
+        'coon', 'darkie', 'paki', 'raghead', 'towelhead', 'zipperhead', 'jigaboo',
+        // Homophobic/transphobic slurs
+        'faggot', 'fag', 'dyke', 'tranny', 'shemale',
+        // Other hate terms
+        'retard', 'retarded',
+        // Violence/harm
+        'kill yourself', 'kys', 'neck yourself'
     ];
 
     let moderated = text;
     blockedTerms.forEach(term => {
-        const regex = new RegExp(term, 'gi');
+        // Match whole words only to avoid false positives
+        const regex = new RegExp(`\\b${term}\\b`, 'gi');
         moderated = moderated.replace(regex, '[filtered]');
     });
+
+    // If the output contains [filtered], flag it but still return
+    if (moderated.includes('[filtered]')) {
+        console.log('⚠️ Content moderation triggered');
+    }
 
     return moderated;
 }
@@ -673,6 +687,11 @@ Return ONLY JSON:
             try {
                 const jsonMatch = openerText.match(/\{[\s\S]*\}/);
                 const parsed = JSON.parse(jsonMatch[0]);
+                // Apply content moderation to all outputs
+                parsed.openers = parsed.openers.map(opener => ({
+                    ...opener,
+                    text: moderateOutput(opener.text)
+                }));
                 result = {
                     matchName: matchName,
                     openers: parsed.openers,
@@ -688,7 +707,7 @@ Return ONLY JSON:
             } catch (e) {
                 result = {
                     matchName: matchName,
-                    openers: [{ type: 'Generated', emoji: '✨', text: openerText }],
+                    openers: [{ type: 'Generated', emoji: '✨', text: moderateOutput(openerText) }],
                     analysis: analysis
                 };
             }
@@ -979,6 +998,324 @@ app.post('/api/cancel-subscription', async (req, res) => {
     } catch (error) {
         console.error('Cancel subscription error:', error);
         res.status(500).json({ error: 'Failed to cancel subscription' });
+    }
+});
+
+// Delete account (GDPR compliance)
+app.post('/api/delete-account', async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID required' });
+        }
+
+        // Cancel any active subscriptions first
+        const { data: subscription } = await supabaseAdmin
+            .from('subscriptions')
+            .select('stripe_subscription_id')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .single();
+
+        if (subscription) {
+            try {
+                await stripe.subscriptions.cancel(subscription.stripe_subscription_id);
+            } catch (e) {
+                console.log('No Stripe subscription to cancel');
+            }
+        }
+
+        // Delete all user data from Supabase (cascades via foreign keys)
+        // Order matters - delete dependent records first
+        await supabaseAdmin.from('generations').delete().eq('user_id', userId);
+        await supabaseAdmin.from('referrals').delete().eq('referrer_id', userId);
+        await supabaseAdmin.from('referrals').delete().eq('referred_id', userId);
+        await supabaseAdmin.from('subscriptions').delete().eq('user_id', userId);
+        await supabaseAdmin.from('payments').delete().eq('user_id', userId);
+        await supabaseAdmin.from('credits').delete().eq('id', userId);
+        await supabaseAdmin.from('profiles').delete().eq('id', userId);
+
+        // Delete auth user (this will sign them out)
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+
+        res.json({ success: true, message: 'Account deleted successfully' });
+    } catch (error) {
+        console.error('Delete account error:', error);
+        res.status(500).json({ error: 'Failed to delete account' });
+    }
+});
+
+// ===================
+// PREDICTIVE SCORING API
+// ===================
+
+// Get success predictions based on profile vibe
+app.get('/api/predictions/:vibe', async (req, res) => {
+    try {
+        const vibe = req.params.vibe?.toLowerCase();
+
+        if (!vibe) {
+            return res.status(400).json({ error: 'Vibe parameter required' });
+        }
+
+        // Query all generations with feedback where vibe matches
+        // The analysis field contains vibe in analysis.vibe
+        const { data: generations, error } = await supabaseAdmin
+            .from('generations')
+            .select('mode, feedback, analysis')
+            .not('feedback', 'is', null);
+
+        if (error) {
+            console.error('Predictions query error:', error);
+            return res.status(500).json({ error: 'Failed to fetch predictions' });
+        }
+
+        // Filter by vibe and calculate success rates per mode
+        const modeStats = {};
+        const modes = ['chaotic', 'flirty', 'unhinged', 'mysterious', 'dadjoke', 'poetic'];
+
+        modes.forEach(mode => {
+            modeStats[mode] = { total: 0, success: 0 };
+        });
+
+        generations.forEach(gen => {
+            const genVibe = gen.analysis?.vibe?.toLowerCase();
+
+            // Match exact vibe or include partial matches for similar vibes
+            const vibeMatches = genVibe === vibe ||
+                (vibe === 'adventurous' && ['energetic', 'chill'].includes(genVibe)) ||
+                (vibe === 'intellectual' && ['creative', 'mysterious'].includes(genVibe)) ||
+                (vibe === 'homebody' && ['chill', 'creative'].includes(genVibe));
+
+            if (vibeMatches && gen.mode && modeStats[gen.mode]) {
+                modeStats[gen.mode].total++;
+                if (gen.feedback === 'worked' || gen.feedback === 'date') {
+                    modeStats[gen.mode].success++;
+                }
+            }
+        });
+
+        // Calculate percentages and find best mode
+        const predictions = {};
+        let bestMode = null;
+        let bestRate = 0;
+
+        modes.forEach(mode => {
+            const stats = modeStats[mode];
+            if (stats.total >= 3) { // Only show if we have enough data
+                const rate = Math.round((stats.success / stats.total) * 100);
+                predictions[mode] = {
+                    rate,
+                    sampleSize: stats.total,
+                    confidence: stats.total >= 10 ? 'high' : stats.total >= 5 ? 'medium' : 'low'
+                };
+                if (rate > bestRate) {
+                    bestRate = rate;
+                    bestMode = mode;
+                }
+            }
+        });
+
+        res.json({
+            vibe,
+            predictions,
+            recommended: bestMode,
+            recommendedRate: bestRate
+        });
+
+    } catch (error) {
+        console.error('Predictions error:', error);
+        res.status(500).json({ error: 'Failed to generate predictions' });
+    }
+});
+
+// Get global success stats (aggregated across all users)
+app.get('/api/global-stats', async (req, res) => {
+    try {
+        const { data: generations, error } = await supabaseAdmin
+            .from('generations')
+            .select('mode, feedback, analysis')
+            .not('feedback', 'is', null);
+
+        if (error) {
+            return res.status(500).json({ error: 'Failed to fetch stats' });
+        }
+
+        // Group by vibe + mode
+        const vibeStats = {};
+
+        generations.forEach(gen => {
+            const vibe = gen.analysis?.vibe?.toLowerCase() || 'unknown';
+            const mode = gen.mode || 'unknown';
+
+            if (!vibeStats[vibe]) {
+                vibeStats[vibe] = {};
+            }
+            if (!vibeStats[vibe][mode]) {
+                vibeStats[vibe][mode] = { total: 0, success: 0 };
+            }
+
+            vibeStats[vibe][mode].total++;
+            if (gen.feedback === 'worked' || gen.feedback === 'date') {
+                vibeStats[vibe][mode].success++;
+            }
+        });
+
+        // Calculate top insights
+        const insights = [];
+        Object.entries(vibeStats).forEach(([vibe, modes]) => {
+            Object.entries(modes).forEach(([mode, stats]) => {
+                if (stats.total >= 5) {
+                    const rate = Math.round((stats.success / stats.total) * 100);
+                    insights.push({
+                        vibe,
+                        mode,
+                        rate,
+                        sampleSize: stats.total
+                    });
+                }
+            });
+        });
+
+        // Sort by success rate
+        insights.sort((a, b) => b.rate - a.rate);
+
+        res.json({
+            totalGenerations: generations.length,
+            topInsights: insights.slice(0, 10),
+            vibeStats
+        });
+
+    } catch (error) {
+        console.error('Global stats error:', error);
+        res.status(500).json({ error: 'Failed to fetch global stats' });
+    }
+});
+
+// Get profile-specific recommendations based on interests
+app.post('/api/recommendations', async (req, res) => {
+    try {
+        const { interests, vibe, currentMode } = req.body;
+
+        if (!interests || !Array.isArray(interests)) {
+            return res.status(400).json({ error: 'Interests array required' });
+        }
+
+        // Normalize interests for matching
+        const normalizedInterests = interests.map(i => i.toLowerCase().trim());
+
+        // Interest categories for grouping
+        const interestCategories = {
+            outdoor: ['hiking', 'camping', 'travel', 'beach', 'nature', 'adventure', 'outdoors', 'skiing', 'surfing'],
+            pets: ['dogs', 'cats', 'pets', 'animals', 'dog mom', 'dog dad', 'cat lover'],
+            fitness: ['gym', 'fitness', 'yoga', 'running', 'sports', 'crossfit', 'working out'],
+            food: ['foodie', 'cooking', 'wine', 'coffee', 'brunch', 'restaurants', 'baking'],
+            creative: ['music', 'art', 'photography', 'writing', 'reading', 'movies', 'concerts'],
+            social: ['parties', 'nightlife', 'festivals', 'dancing', 'friends', 'social'],
+            intellectual: ['books', 'podcasts', 'documentaries', 'science', 'philosophy', 'politics']
+        };
+
+        // Find matching categories
+        const matchedCategories = [];
+        Object.entries(interestCategories).forEach(([category, keywords]) => {
+            if (normalizedInterests.some(interest =>
+                keywords.some(kw => interest.includes(kw) || kw.includes(interest))
+            )) {
+                matchedCategories.push(category);
+            }
+        });
+
+        // Query all generations with feedback
+        const { data: generations, error } = await supabaseAdmin
+            .from('generations')
+            .select('mode, feedback, analysis')
+            .not('feedback', 'is', null);
+
+        if (error) {
+            return res.status(500).json({ error: 'Failed to fetch data' });
+        }
+
+        // Calculate success rates for matching interest profiles
+        const modeStats = {};
+        const modes = ['chaotic', 'flirty', 'unhinged', 'mysterious', 'dadjoke', 'poetic'];
+
+        modes.forEach(mode => {
+            modeStats[mode] = { total: 0, success: 0 };
+        });
+
+        generations.forEach(gen => {
+            const genInterests = gen.analysis?.interests || [];
+            const genNormalized = genInterests.map(i => (i || '').toLowerCase());
+
+            // Check if this generation has similar interests
+            const hasSimilarInterests = matchedCategories.some(category => {
+                const categoryKeywords = interestCategories[category];
+                return genNormalized.some(gi =>
+                    categoryKeywords.some(kw => gi.includes(kw) || kw.includes(gi))
+                );
+            });
+
+            if (hasSimilarInterests && gen.mode && modeStats[gen.mode]) {
+                modeStats[gen.mode].total++;
+                if (gen.feedback === 'replied' || gen.feedback === 'date') {
+                    modeStats[gen.mode].success++;
+                }
+            }
+        });
+
+        // Calculate recommendations
+        const recommendations = [];
+        modes.forEach(mode => {
+            const stats = modeStats[mode];
+            if (stats.total >= 2) {
+                const rate = Math.round((stats.success / stats.total) * 100);
+                recommendations.push({
+                    mode,
+                    rate,
+                    sampleSize: stats.total
+                });
+            }
+        });
+
+        // Sort by success rate
+        recommendations.sort((a, b) => b.rate - a.rate);
+
+        // Generate specific insights
+        const insights = [];
+
+        // Compare modes for interesting differences
+        if (recommendations.length >= 2) {
+            const best = recommendations[0];
+            const others = recommendations.slice(1);
+
+            others.forEach(other => {
+                const diff = best.rate - other.rate;
+                if (diff >= 10 && best.sampleSize >= 3) {
+                    const categoryName = matchedCategories[0] || 'similar';
+                    insights.push({
+                        text: `For ${categoryName} profiles, ${best.mode} outperforms ${other.mode} by ${diff}%`,
+                        bestMode: best.mode,
+                        bestRate: best.rate,
+                        comparedMode: other.mode,
+                        comparedRate: other.rate,
+                        difference: diff
+                    });
+                }
+            });
+        }
+
+        res.json({
+            categories: matchedCategories,
+            recommendations: recommendations.slice(0, 3),
+            bestMode: recommendations[0]?.mode || null,
+            bestRate: recommendations[0]?.rate || 0,
+            insights: insights.slice(0, 2)
+        });
+
+    } catch (error) {
+        console.error('Recommendations error:', error);
+        res.status(500).json({ error: 'Failed to generate recommendations' });
     }
 });
 

@@ -955,6 +955,94 @@ body {
     border-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Predictions Section */
+.predictions-section {
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(52, 152, 219, 0.05) 100%);
+    border: 1px solid rgba(46, 204, 113, 0.2);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.predictions-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.predictions-icon {
+    font-size: 20px;
+}
+
+.predictions-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.predictions-vibe {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 12px;
+}
+
+.predictions-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.prediction-card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.prediction-card:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.prediction-card.recommended {
+    border-color: rgba(46, 204, 113, 0.5);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.prediction-emoji {
+    font-size: 20px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.prediction-mode {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    display: block;
+    margin-bottom: 2px;
+}
+
+.prediction-rate {
+    font-size: 12px;
+    font-weight: 700;
+    color: #2ecc71;
+}
+
+.prediction-card.recommended .prediction-rate {
+    color: #2ecc71;
+}
+
+.prediction-card.recommended .prediction-mode::after {
+    content: " ⭐";
+}
+
 .results-actions {
     display: flex;
     gap: 10px;
@@ -1511,6 +1599,27 @@ body {
     background: rgba(255, 59, 48, 0.1);
     border-color: rgba(255, 59, 48, 0.3);
     color: #ff6b6b;
+}
+
+/* Delete Account Button */
+.btn-delete-account {
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 59, 48, 0.4);
+    border-radius: 12px;
+    color: #ff6b6b;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-delete-account:active {
+    background: rgba(255, 59, 48, 0.15);
+    border-color: #ff3b30;
+    transform: scale(0.98);
 }
 
 /* Toggle */

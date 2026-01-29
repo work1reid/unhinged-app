@@ -110,6 +110,47 @@ async function signOut() {
     showToast('Signed out');
 }
 
+async function deleteAccount() {
+    if (!currentUser) return;
+
+    const confirmed = confirm(
+        'Are you sure you want to delete your account?\n\n' +
+        'This will permanently delete:\n' +
+        '• All your generated openers\n' +
+        '• Your credits and purchase history\n' +
+        '• Your analytics and feedback data\n\n' +
+        'This action cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    const doubleConfirm = confirm('This is your final warning. Delete everything?');
+    if (!doubleConfirm) return;
+
+    try {
+        const response = await fetch('/api/delete-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showToast('Account deleted. Goodbye!');
+            currentUser = null;
+            currentUsername = null;
+            closeSettings();
+            showLogin();
+        } else {
+            showToast(data.error || 'Failed to delete account');
+        }
+    } catch (e) {
+        console.error('Delete account error:', e);
+        showToast('Failed to delete account');
+    }
+}
+
 // ===================
 // PROFILE / USERNAME
 // ===================
@@ -218,7 +259,7 @@ async function addCredits(amount) {
 }
 
 const SIGNUP_BONUS_CREDITS = 5;
-const WEEKLY_BONUS_CREDITS = 2;
+const WEEKLY_BONUS_CREDITS = 1;
 
 async function giveSignupBonus() {
     if (!currentUser || !supabaseClient) return;
@@ -307,7 +348,7 @@ async function checkWeeklyBonus() {
                 .update({ last_weekly_bonus: now.toISOString() })
                 .eq('id', currentUser.id);
 
-            showToast(`🎁 Weekly bonus: +${WEEKLY_BONUS_CREDITS} credits!`);
+            showToast(`🎁 Weekly bonus: +1 credit!`);
         }
     } catch (e) {
         console.error('Weekly bonus check failed:', e);
@@ -1516,6 +1557,9 @@ async function updateSettingsUI() {
         referralSection.style.display = 'block';
         referralLinkInput.value = getReferralLink() || '';
 
+        // Show delete account button
+        document.getElementById('delete-account-btn').style.display = 'block';
+
         // Get referral stats
         const referralCount = await getReferralCount();
         if (referralCount > 0) {
@@ -1530,6 +1574,7 @@ async function updateSettingsUI() {
         signinBtn.style.display = 'block';
         creditsSection.style.display = 'none';
         referralSection.style.display = 'none';
+        document.getElementById('delete-account-btn').style.display = 'none';
     }
 }
 
@@ -2193,6 +2238,134 @@ function displayModeSuccessRates(bestMode) {
 }
 
 // ===================
+// PREDICTIVE SCORING
+// ===================
+let lastUsedMode = 'chaotic';
+
+async function displayPredictions(currentMode) {
+    lastUsedMode = currentMode;
+    const section = document.getElementById('predictions-section');
+    const vibeEl = document.getElementById('predictions-vibe');
+    const cardsEl = document.getElementById('predictions-cards');
+
+    // Get vibe and interests from current analysis/profile
+    const vibe = currentAnalysis?.vibe?.toLowerCase();
+    const interests = currentProfile?.interests || currentAnalysis?.interests || [];
+
+    if (!vibe && interests.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    const modeEmojis = {
+        chaotic: '🌀', flirty: '😏', unhinged: '🔥',
+        mysterious: '🎭', dadjoke: '👨', poetic: '🎨'
+    };
+
+    const modeNames = {
+        chaotic: 'Chaotic', flirty: 'Flirty', unhinged: 'Unhinged',
+        mysterious: 'Mysterious', dadjoke: 'Dad Joke', poetic: 'Poetic'
+    };
+
+    try {
+        // Try interest-based recommendations first
+        let recommendations = null;
+        let insight = null;
+
+        if (interests.length > 0) {
+            try {
+                const recResponse = await fetch('/api/recommendations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ interests, vibe, currentMode })
+                });
+                const recData = await recResponse.json();
+
+                if (recData.recommendations?.length > 0) {
+                    recommendations = recData.recommendations
+                        .filter(r => r.mode !== currentMode)
+                        .slice(0, 3);
+                }
+
+                if (recData.insights?.length > 0) {
+                    insight = recData.insights[0];
+                }
+            } catch (e) {
+                console.log('Interest recommendations unavailable');
+            }
+        }
+
+        // Fall back to vibe-based predictions
+        if (!recommendations || recommendations.length === 0) {
+            if (!vibe) {
+                section.style.display = 'none';
+                return;
+            }
+
+            const response = await fetch(`/api/predictions/${encodeURIComponent(vibe)}`);
+            const data = await response.json();
+
+            if (!data.predictions || Object.keys(data.predictions).length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            recommendations = Object.entries(data.predictions)
+                .filter(([mode]) => mode !== currentMode)
+                .sort((a, b) => b[1].rate - a[1].rate)
+                .slice(0, 3)
+                .map(([mode, pred]) => ({ mode, rate: pred.rate }));
+        }
+
+        if (recommendations.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        // Display insight if available, otherwise show vibe-based message
+        if (insight) {
+            vibeEl.innerHTML = `<strong>💡 ${insight.text}</strong>`;
+        } else if (vibe) {
+            vibeEl.textContent = `For ${vibe} profiles like this:`;
+        } else {
+            vibeEl.textContent = 'Based on similar profiles:';
+        }
+
+        cardsEl.innerHTML = recommendations.map((rec, idx) => {
+            const isRecommended = idx === 0;
+            return `
+                <div class="prediction-card ${isRecommended ? 'recommended' : ''}" onclick="regenerateWithMode('${rec.mode}')">
+                    <span class="prediction-emoji">${modeEmojis[rec.mode] || '✨'}</span>
+                    <span class="prediction-mode">${modeNames[rec.mode] || rec.mode}</span>
+                    <span class="prediction-rate">${rec.rate}%</span>
+                </div>
+            `;
+        }).join('');
+
+        section.style.display = 'block';
+    } catch (e) {
+        console.error('Failed to load predictions:', e);
+        section.style.display = 'none';
+    }
+}
+
+async function regenerateWithMode(mode) {
+    // Store the selected mode and regenerate
+    const modeRadio = document.querySelector(`input[name="mode"][value="${mode}"]`);
+    if (modeRadio) {
+        modeRadio.checked = true;
+    }
+
+    // Check for unhinged disclaimer
+    if (mode === 'unhinged' && !unhingedDisclaimerAccepted) {
+        showUnhingedDisclaimer();
+        return;
+    }
+
+    await generateOpenersAfterDisclaimer();
+}
+
+// ===================
 // UNHINGED DISCLAIMER
 // ===================
 let unhingedDisclaimerAccepted = false;
@@ -2277,6 +2450,9 @@ async function generateOpenersAfterDisclaimer() {
         displayOpeners(currentOpeners);
         updateAnalysisButton();
         showResults();
+
+        // Fetch and display predictions for other modes
+        await displayPredictions(mode);
 
     } catch (error) {
         clearInterval(loadingInterval);
@@ -2426,6 +2602,7 @@ function setupListeners() {
         closeSettings();
         showLogin();
     });
+    document.getElementById('delete-account-btn')?.addEventListener('click', deleteAccount);
 
     // Username save
     document.getElementById('save-username-btn')?.addEventListener('click', async () => {
