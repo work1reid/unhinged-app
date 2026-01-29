@@ -1,40 +1,233 @@
+-- =============================================================================
+-- UNHINGED AI - SUPABASE SCHEMA
+-- =============================================================================
 -- Run this in Supabase SQL Editor (https://supabase.com/dashboard)
 -- Go to: SQL Editor > New Query > Paste this > Run
+--
+-- SAFETY: This script uses IF NOT EXISTS and safe patterns.
+-- It will NOT delete existing data. Safe to run multiple times.
+--
+-- WARNING: NEVER use DROP TABLE or DROP POLICY without backing up first!
+-- =============================================================================
 
--- Table to store generation history
+
+-- =============================================================================
+-- GENERATIONS TABLE (stores opener history)
+-- =============================================================================
+
 CREATE TABLE IF NOT EXISTS generations (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     match_name TEXT,
     openers JSONB NOT NULL,
     mode TEXT,
+    analysis JSONB,
+    feedback TEXT,
+    feedback_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for faster queries by user
+-- Add columns if they don't exist (safe for existing tables)
+ALTER TABLE generations ADD COLUMN IF NOT EXISTS analysis JSONB;
+ALTER TABLE generations ADD COLUMN IF NOT EXISTS feedback TEXT;
+ALTER TABLE generations ADD COLUMN IF NOT EXISTS feedback_at TIMESTAMPTZ;
+
+-- Indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_generations_user_id ON generations(user_id);
 CREATE INDEX IF NOT EXISTS idx_generations_created_at ON generations(created_at DESC);
 
--- Enable Row Level Security (RLS)
+-- Enable Row Level Security
 ALTER TABLE generations ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can only see their own generations
-CREATE POLICY "Users can view own generations"
-    ON generations FOR SELECT
-    USING (auth.uid() = user_id);
+-- RLS Policies (using DO block to check if policy exists first)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'generations' AND policyname = 'Users can view own generations') THEN
+        CREATE POLICY "Users can view own generations" ON generations FOR SELECT USING (auth.uid() = user_id);
+    END IF;
 
--- Policy: Users can insert their own generations
-CREATE POLICY "Users can insert own generations"
-    ON generations FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'generations' AND policyname = 'Users can insert own generations') THEN
+        CREATE POLICY "Users can insert own generations" ON generations FOR INSERT WITH CHECK (auth.uid() = user_id);
+    END IF;
 
--- Policy: Users can delete their own generations
-CREATE POLICY "Users can delete own generations"
-    ON generations FOR DELETE
-    USING (auth.uid() = user_id);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'generations' AND policyname = 'Users can delete own generations') THEN
+        CREATE POLICY "Users can delete own generations" ON generations FOR DELETE USING (auth.uid() = user_id);
+    END IF;
 
--- Policy: Users can update their own generations (for feedback)
-CREATE POLICY "Users can update own generations"
-    ON generations FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'generations' AND policyname = 'Users can update own generations') THEN
+        CREATE POLICY "Users can update own generations" ON generations FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+    END IF;
+END $$;
+
+
+-- =============================================================================
+-- CREDITS TABLE (stores user credit balances)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS credits (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    balance INTEGER DEFAULT 0,
+    total_purchased INTEGER DEFAULT 0,
+    last_weekly_bonus TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add columns if they don't exist
+ALTER TABLE credits ADD COLUMN IF NOT EXISTS last_weekly_bonus TIMESTAMPTZ;
+
+-- Enable RLS
+ALTER TABLE credits ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'credits' AND policyname = 'Users can view own credits') THEN
+        CREATE POLICY "Users can view own credits" ON credits FOR SELECT USING (auth.uid() = id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'credits' AND policyname = 'Users can update own credits') THEN
+        CREATE POLICY "Users can update own credits" ON credits FOR UPDATE USING (auth.uid() = id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'credits' AND policyname = 'Service role full access to credits') THEN
+        CREATE POLICY "Service role full access to credits" ON credits FOR ALL USING (auth.role() = 'service_role');
+    END IF;
+END $$;
+
+
+-- =============================================================================
+-- PAYMENTS TABLE (stores payment history for idempotency)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS payments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    stripe_payment_id TEXT NOT NULL UNIQUE,
+    amount INTEGER NOT NULL,
+    credits INTEGER NOT NULL,
+    type TEXT DEFAULT 'one_time',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add columns if they don't exist
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'one_time';
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_stripe_id ON payments(stripe_payment_id);
+
+-- Enable RLS
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'payments' AND policyname = 'Users can view own payments') THEN
+        CREATE POLICY "Users can view own payments" ON payments FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'payments' AND policyname = 'Service role full access to payments') THEN
+        CREATE POLICY "Service role full access to payments" ON payments FOR ALL USING (auth.role() = 'service_role');
+    END IF;
+END $$;
+
+
+-- =============================================================================
+-- SUBSCRIPTIONS TABLE (stores Stripe subscriptions)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    stripe_subscription_id TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'active',
+    credits_per_period INTEGER NOT NULL DEFAULT 25,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+
+-- Enable RLS
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'subscriptions' AND policyname = 'Users can read own subscriptions') THEN
+        CREATE POLICY "Users can read own subscriptions" ON subscriptions FOR SELECT USING (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'subscriptions' AND policyname = 'Service role can manage subscriptions') THEN
+        CREATE POLICY "Service role can manage subscriptions" ON subscriptions FOR ALL USING (auth.role() = 'service_role');
+    END IF;
+END $$;
+
+
+-- =============================================================================
+-- REFERRALS TABLE (stores referral relationships)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS referrals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    referrer_id UUID REFERENCES auth.users(id),
+    referred_id UUID REFERENCES auth.users(id) UNIQUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals(referred_id);
+
+-- Enable RLS
+ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'referrals' AND policyname = 'Users can read their own referrals') THEN
+        CREATE POLICY "Users can read their own referrals" ON referrals FOR SELECT USING (auth.uid() = referrer_id OR auth.uid() = referred_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'referrals' AND policyname = 'Users can insert referrals') THEN
+        CREATE POLICY "Users can insert referrals" ON referrals FOR INSERT WITH CHECK (auth.uid() = referred_id);
+    END IF;
+END $$;
+
+
+-- =============================================================================
+-- PROFILES TABLE (optional - for user preferences)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    referral_code TEXT UNIQUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can view own profile') THEN
+        CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can update own profile') THEN
+        CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can insert own profile') THEN
+        CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+    END IF;
+END $$;
+
+
+-- =============================================================================
+-- DONE! All tables created safely.
+-- =============================================================================
