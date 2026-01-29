@@ -1435,8 +1435,17 @@ function updateUI() {
 }
 
 async function updateStats() {
-    const freeRemaining = await getRemainingFreeGenerations();
-    const totalRemaining = freeRemaining + purchasedCredits;
+    let totalRemaining;
+
+    // Subscribers see weekly cap remaining
+    if (currentSubscription) {
+        const weeklyUsage = getSubscriberWeeklyUsage();
+        totalRemaining = Math.max(0, SUBSCRIBER_WEEKLY_CAP - weeklyUsage) + purchasedCredits;
+    } else {
+        const freeRemaining = await getRemainingFreeGenerations();
+        totalRemaining = freeRemaining + purchasedCredits;
+    }
+
     let total = getUsageData().total || 0;
     let successRate = '—';
 
