@@ -2758,16 +2758,24 @@ function displayOpeners(openers) {
     const list = document.getElementById('openers-list');
     list.innerHTML = '';
 
-    openers.forEach(opener => {
+    openers.forEach((opener, index) => {
         const card = document.createElement('div');
         card.className = 'opener-card';
-        card.onclick = () => copyOpener(opener.text, card);
+        card.dataset.index = index;
         card.innerHTML = `
             <div class="opener-label">
                 <span class="opener-emoji">${opener.emoji}</span>
                 <span class="opener-type">${opener.type}</span>
             </div>
             <p class="opener-text">${opener.text}</p>
+            <div class="opener-actions">
+                <button class="copy-btn" onclick="event.stopPropagation(); copyOpener('${opener.text.replace(/'/g, "\\'")}', this.closest('.opener-card'))">
+                    📋 Copy
+                </button>
+                <button class="worked-btn" onclick="event.stopPropagation(); markWorked(${index}, this)">
+                    ✓ This worked!
+                </button>
+            </div>
         `;
         list.appendChild(card);
     });
@@ -2779,6 +2787,30 @@ function copyOpener(text, card) {
     card.classList.add('copied');
     showToast('Copied!');
     setTimeout(() => card.classList.remove('copied'), 2000);
+}
+
+async function markWorked(index, btn) {
+    // Visual feedback
+    document.querySelectorAll('.worked-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.textContent = '✓ This worked!';
+    });
+    btn.classList.add('selected');
+    btn.textContent = '✓ Winner!';
+    showToast('Marked as winner! 🎉');
+
+    // Save to database
+    if (currentUser && supabaseClient && lastGenerationId) {
+        try {
+            await supabaseClient
+                .from('generations')
+                .update({ winning_opener: index + 1 }) // 1-indexed
+                .eq('id', lastGenerationId);
+            console.log('Winning opener saved:', index + 1);
+        } catch (e) {
+            console.error('Failed to save winning opener:', e);
+        }
+    }
 }
 
 // ===================
@@ -3617,17 +3649,21 @@ async function showUserDetails(userId) {
                             const date = new Date(gen.created_at).toLocaleString();
                             const openers = gen.openers || [];
                             const modeLabel = gen.mode === 'unhinged' ? '🔥 Unhinged' : '💬 Normal';
+                            const winningOpener = gen.winning_opener;
                             return `
-                                <div class="generation-card" onclick="toggleGeneration(${idx})">
+                                <div class="generation-card ${winningOpener ? 'has-winner' : ''}" onclick="toggleGeneration(${idx})">
                                     <div class="gen-header">
                                         <span class="gen-name">${gen.match_name || 'Unknown'}</span>
-                                        <span class="gen-mode">${modeLabel}</span>
+                                        <div class="gen-badges">
+                                            ${winningOpener ? '<span class="winner-badge">🏆 Winner</span>' : ''}
+                                            <span class="gen-mode">${modeLabel}</span>
+                                        </div>
                                     </div>
                                     <div class="gen-date">${date}</div>
                                     <div class="gen-openers hidden" id="gen-openers-${idx}">
                                         ${openers.map((opener, i) => `
-                                            <div class="gen-opener">
-                                                <span class="opener-num">${i + 1}</span>
+                                            <div class="gen-opener ${winningOpener === i + 1 ? 'winner' : ''}">
+                                                <span class="opener-num">${winningOpener === i + 1 ? '🏆' : i + 1}</span>
                                                 <span class="opener-text">${opener}</span>
                                             </div>
                                         `).join('')}

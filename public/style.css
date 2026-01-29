@@ -955,26 +955,52 @@ body {
     font-size: 14px;
     line-height: 1.5;
     color: rgba(255, 255, 255, 0.95);
-    padding-right: 60px;
 }
 
-.opener-card::after {
-    content: 'Copy';
-    position: absolute;
-    bottom: 12px;
-    right: 12px;
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.4);
-    background: rgba(255,255,255,0.1);
-    padding: 4px 8px;
-    border-radius: 6px;
+.opener-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
 }
 
-.opener-card.copied::after {
-    content: 'Copied!';
-    color: #2ecc71;
+.opener-actions button {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 11px;
     font-weight: 600;
-    background: rgba(46, 204, 113, 0.15);
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.copy-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.copy-btn:active {
+    background: rgba(46, 204, 113, 0.3);
+    color: #2ecc71;
+}
+
+.worked-btn {
+    background: rgba(255, 107, 107, 0.15);
+    color: rgba(255, 107, 107, 0.8);
+}
+
+.worked-btn:hover {
+    background: rgba(255, 107, 107, 0.25);
+}
+
+.worked-btn.selected {
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: white;
+}
+
+.opener-card.copied .copy-btn {
+    background: rgba(46, 204, 113, 0.3);
+    color: #2ecc71;
 }
 
 /* Feedback */
@@ -3655,6 +3681,11 @@ body {
     background: rgba(255, 255, 255, 0.06);
 }
 
+.generation-card.has-winner {
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    background: rgba(255, 215, 0, 0.05);
+}
+
 .gen-header {
     display: flex;
     justify-content: space-between;
@@ -3666,6 +3697,21 @@ body {
     font-size: 14px;
     font-weight: 600;
     color: #fff;
+}
+
+.gen-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.winner-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: rgba(255, 215, 0, 0.2);
+    color: #ffd700;
+    font-weight: 600;
 }
 
 .gen-mode {
@@ -3703,6 +3749,16 @@ body {
     background: rgba(255, 255, 255, 0.03);
     border-radius: 8px;
     margin-bottom: 8px;
+}
+
+.gen-opener.winner {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.gen-opener.winner .opener-num {
+    background: linear-gradient(135deg, #ffd700, #ffb700);
+    font-size: 14px;
 }
 
 .opener-num {

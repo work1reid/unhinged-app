@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS generations (
 ALTER TABLE generations ADD COLUMN IF NOT EXISTS analysis JSONB;
 ALTER TABLE generations ADD COLUMN IF NOT EXISTS feedback TEXT;
 ALTER TABLE generations ADD COLUMN IF NOT EXISTS feedback_at TIMESTAMPTZ;
+ALTER TABLE generations ADD COLUMN IF NOT EXISTS winning_opener INTEGER;
 
 -- Indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_generations_user_id ON generations(user_id);

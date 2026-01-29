@@ -1754,7 +1754,7 @@ app.get('/api/admin/user/:userId', async (req, res) => {
         // Get generations (last 50) with full opener content
         const { data: generations } = await supabaseAdmin
             .from('generations')
-            .select('id, match_name, mode, openers, feedback, created_at')
+            .select('id, match_name, mode, openers, feedback, winning_opener, created_at')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(50);
