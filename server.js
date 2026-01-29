@@ -862,13 +862,13 @@ const CREDIT_PACKS = {
         name: '10 Generation Credits',
         description: 'Weekend boost - perfect for a few dates',
         credits: 10,
-        price: 495 // $4.95 in cents
+        priceId: 'price_1SupuN2ZyXtkxZaYTUX2VlPT' // $4.95 AUD
     },
     value: {
         name: '30 Generation Credits',
         description: 'Best value - save 46% per credit!',
         credits: 30,
-        price: 795 // $7.95 in cents
+        priceId: 'price_1Supvt2ZyXtkxZaYlmYuBwAx' // $7.95 USD
     }
 };
 
@@ -878,7 +878,7 @@ const SUBSCRIPTIONS = {
         name: 'Weekly Unlimited',
         description: 'Unlimited generations per week (fair use: 150/week)',
         credits: 150, // Fair use cap
-        price: 999, // $9.99 in cents
+        priceId: 'price_1Supwz2ZyXtkxZaYiiPcGbtJ', // $9.99/week AUD
         interval: 'week'
     }
 };
@@ -898,15 +898,7 @@ app.post('/api/create-checkout', async (req, res) => {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [{
-                price_data: {
-                    currency: 'usd',
-                    product_data: {
-                        name: selectedPack.name,
-                        description: selectedPack.description,
-                        images: ['https://unhingedai.app/icon-192.png']
-                    },
-                    unit_amount: selectedPack.price
-                },
+                price: selectedPack.priceId,
                 quantity: 1
             }],
             mode: 'payment',
@@ -940,17 +932,7 @@ app.post('/api/create-subscription', async (req, res) => {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [{
-                price_data: {
-                    currency: 'usd',
-                    product_data: {
-                        name: selectedPlan.name,
-                        description: selectedPlan.description
-                    },
-                    unit_amount: selectedPlan.price,
-                    recurring: {
-                        interval: selectedPlan.interval
-                    }
-                },
+                price: selectedPlan.priceId,
                 quantity: 1
             }],
             mode: 'subscription',
