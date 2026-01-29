@@ -3436,26 +3436,336 @@ body {
     border-bottom: none;
 }
 
-/* User Detail Modal Styles */
-.user-detail-header {
-    text-align: center;
-    padding-bottom: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 16px;
+/* ===================
+   USER PROFILE MODAL (Admin)
+   =================== */
+
+.admin-user-modal-content {
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
-.user-detail-header h2 {
-    font-size: 15px;
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 20px;
+}
+
+.profile-avatar-large {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+}
+
+.profile-header-info {
+    flex: 1;
+}
+
+.profile-email {
+    font-size: 16px;
     color: #fff;
+    font-weight: 600;
     margin-bottom: 4px;
     word-break: break-all;
 }
 
-.user-detail-provider {
+.profile-provider {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-right: 8px;
+}
+
+.profile-joined {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.profile-stat {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 14px 8px;
+    text-align: center;
+}
+
+.profile-stat.highlight {
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.15), rgba(34, 197, 94, 0.15));
+}
+
+.profile-stat-value {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.profile-stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+}
+
+.profile-info-section {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.profile-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.profile-info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.5);
 }
 
+.info-value {
+    font-size: 12px;
+    color: #fff;
+    font-weight: 500;
+}
+
+.info-value.small {
+    font-size: 10px;
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.profile-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.profile-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+
+.profile-btn.add {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+}
+
+.profile-btn.remove {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.profile-btn.delete {
+    background: rgba(255, 59, 48, 0.2);
+    color: #ff3b30;
+}
+
+.profile-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.profile-tab {
+    flex: 1;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.profile-tab.active {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+.profile-tab-content {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.empty-state {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 30px;
+    font-size: 13px;
+}
+
+/* Generation Cards */
+.generations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.generation-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.generation-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.gen-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.gen-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.gen-mode {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.gen-date {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 8px;
+}
+
+.gen-expand {
+    font-size: 10px;
+    color: rgba(255, 107, 107, 0.7);
+    text-align: center;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gen-openers {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gen-opener {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.opener-num {
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+}
+
+.opener-text {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
+}
+
+.gen-feedback {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(74, 222, 128, 0.1);
+    border-radius: 8px;
+    font-size: 12px;
+    color: #4ade80;
+}
+
+/* Payment Cards */
+.payments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.payment-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+}
+
+.payment-card .payment-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #4ade80;
+    min-width: 60px;
+}
+
+.payment-card .payment-info {
+    flex: 1;
+}
+
+.payment-card .payment-credits {
+    display: block;
+    font-size: 12px;
+    color: #fff;
+}
+
+.payment-card .payment-type {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+}
+
+.payment-card .payment-date {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Legacy styles kept for compatibility */
 .user-detail-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

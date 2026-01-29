@@ -1751,10 +1751,10 @@ app.get('/api/admin/user/:userId', async (req, res) => {
             .eq('id', userId)
             .single();
 
-        // Get generations (last 50)
+        // Get generations (last 50) with full opener content
         const { data: generations } = await supabaseAdmin
             .from('generations')
-            .select('id, match_name, mode, feedback, created_at')
+            .select('id, match_name, mode, openers, feedback, created_at')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(50);

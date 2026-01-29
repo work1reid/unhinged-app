@@ -3522,6 +3522,8 @@ async function submitAdminCredits() {
     }
 }
 
+let currentUserProfile = null;
+
 async function showUserDetails(userId) {
     const modal = document.getElementById('admin-user-modal');
     const container = document.getElementById('admin-user-details');
@@ -3537,56 +3539,148 @@ async function showUserDetails(userId) {
 
         if (!response.ok) throw new Error('Failed to load user');
 
-        const user = await response.json();
+        const data = await response.json();
+        currentUserProfile = data;
+
+        const user = data.user;
+        const credits = data.credits || { balance: 0, total_purchased: 0 };
+        const generations = data.generations || [];
+        const payments = data.payments || [];
+        const subscription = data.subscription;
+
         const joined = new Date(user.created_at).toLocaleDateString();
+        const lastSeen = user.last_sign_in ? new Date(user.last_sign_in).toLocaleString() : 'Never';
         const provider = user.provider === 'google' ? '🔵 Google' : '📧 Email';
+        const totalSpent = payments.reduce((sum, p) => sum + (p.amount || 0), 0) / 100;
 
         container.innerHTML = `
-            <div class="user-detail-header">
-                <h2>${user.email}</h2>
-                <span class="user-detail-provider">${provider}</span>
-            </div>
-
-            <div class="user-detail-stats">
-                <div class="user-stat-box">
-                    <span class="user-stat-value">${user.credits?.balance || 0}</span>
-                    <span class="user-stat-label">Credits</span>
-                </div>
-                <div class="user-stat-box">
-                    <span class="user-stat-value">${user.generations || 0}</span>
-                    <span class="user-stat-label">Generations</span>
-                </div>
-                <div class="user-stat-box">
-                    <span class="user-stat-value">$${((user.credits?.total_purchased || 0) * 0.10).toFixed(0)}</span>
-                    <span class="user-stat-label">Spent</span>
+            <div class="profile-header">
+                <div class="profile-avatar-large">${user.email.charAt(0).toUpperCase()}</div>
+                <div class="profile-header-info">
+                    <h2 class="profile-email">${user.email}</h2>
+                    <span class="profile-provider">${provider}</span>
+                    <span class="profile-joined">Joined ${joined}</span>
                 </div>
             </div>
 
-            <div class="user-detail-info">
-                <p><strong>User ID:</strong> ${user.id}</p>
-                <p><strong>Joined:</strong> ${joined}</p>
-                ${user.subscription ? `<p><strong>Subscription:</strong> ${user.subscription.status} (${user.subscription.weekly_usage || 0}/${user.subscription.credits_per_period} weekly)</p>` : '<p><strong>Subscription:</strong> None</p>'}
-            </div>
-
-            <div class="user-detail-actions">
-                <button class="btn-primary" onclick="openAddCredits('${user.id}', '${user.email}')">Add Credits</button>
-                <button class="btn-secondary" onclick="openRemoveCredits('${user.id}', '${user.email}', ${user.credits?.balance || 0})">Remove Credits</button>
-                <button class="btn-danger" onclick="adminDeleteUser('${user.id}', '${user.email}')">Delete User</button>
-            </div>
-
-            ${user.recentGenerations && user.recentGenerations.length > 0 ? `
-                <div class="user-detail-history">
-                    <h3>Recent Generations</h3>
-                    ${user.recentGenerations.map(gen => {
-                        const date = new Date(gen.created_at).toLocaleDateString();
-                        return `<div class="user-gen-item">${gen.match_name || 'Unknown'} - ${gen.mode || 'normal'} - ${date}</div>`;
-                    }).join('')}
+            <div class="profile-stats-grid">
+                <div class="profile-stat">
+                    <span class="profile-stat-value">${credits.balance}</span>
+                    <span class="profile-stat-label">Credits</span>
                 </div>
-            ` : ''}
+                <div class="profile-stat">
+                    <span class="profile-stat-value">${generations.length}</span>
+                    <span class="profile-stat-label">Generations</span>
+                </div>
+                <div class="profile-stat highlight">
+                    <span class="profile-stat-value">$${totalSpent.toFixed(0)}</span>
+                    <span class="profile-stat-label">Spent</span>
+                </div>
+                <div class="profile-stat">
+                    <span class="profile-stat-value">${subscription ? '✓' : '✗'}</span>
+                    <span class="profile-stat-label">Subscriber</span>
+                </div>
+            </div>
+
+            <div class="profile-info-section">
+                <div class="profile-info-row">
+                    <span class="info-label">User ID</span>
+                    <span class="info-value small">${user.id}</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="info-label">Last Active</span>
+                    <span class="info-value">${lastSeen}</span>
+                </div>
+                ${subscription ? `
+                <div class="profile-info-row">
+                    <span class="info-label">Subscription</span>
+                    <span class="info-value">${subscription.status} (${subscription.weekly_usage || 0}/${subscription.credits_per_period} weekly)</span>
+                </div>
+                ` : ''}
+            </div>
+
+            <div class="profile-actions">
+                <button class="profile-btn add" onclick="openAddCredits('${user.id}', '${user.email}')">+ Add Credits</button>
+                <button class="profile-btn remove" onclick="openRemoveCredits('${user.id}', '${user.email}', ${credits.balance})">- Remove</button>
+                <button class="profile-btn delete" onclick="adminDeleteUser('${user.id}', '${user.email}')">Delete</button>
+            </div>
+
+            <div class="profile-tabs">
+                <button class="profile-tab active" onclick="switchProfileTab('generations')">Generations (${generations.length})</button>
+                <button class="profile-tab" onclick="switchProfileTab('payments')">Payments (${payments.length})</button>
+            </div>
+
+            <div class="profile-tab-content" id="profile-tab-generations">
+                ${generations.length === 0 ? '<p class="empty-state">No generations yet</p>' : `
+                    <div class="generations-list">
+                        ${generations.map((gen, idx) => {
+                            const date = new Date(gen.created_at).toLocaleString();
+                            const openers = gen.openers || [];
+                            const modeLabel = gen.mode === 'unhinged' ? '🔥 Unhinged' : '💬 Normal';
+                            return `
+                                <div class="generation-card" onclick="toggleGeneration(${idx})">
+                                    <div class="gen-header">
+                                        <span class="gen-name">${gen.match_name || 'Unknown'}</span>
+                                        <span class="gen-mode">${modeLabel}</span>
+                                    </div>
+                                    <div class="gen-date">${date}</div>
+                                    <div class="gen-openers hidden" id="gen-openers-${idx}">
+                                        ${openers.map((opener, i) => `
+                                            <div class="gen-opener">
+                                                <span class="opener-num">${i + 1}</span>
+                                                <span class="opener-text">${opener}</span>
+                                            </div>
+                                        `).join('')}
+                                        ${gen.feedback ? `<div class="gen-feedback">Feedback: ${gen.feedback}</div>` : ''}
+                                    </div>
+                                    <div class="gen-expand">Click to ${openers.length > 0 ? 'see openers' : 'expand'}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `}
+            </div>
+
+            <div class="profile-tab-content hidden" id="profile-tab-payments">
+                ${payments.length === 0 ? '<p class="empty-state">No payments yet</p>' : `
+                    <div class="payments-list">
+                        ${payments.map(payment => {
+                            const date = new Date(payment.created_at).toLocaleString();
+                            return `
+                                <div class="payment-card">
+                                    <div class="payment-amount">$${(payment.amount / 100).toFixed(2)}</div>
+                                    <div class="payment-info">
+                                        <span class="payment-credits">+${payment.credits} credits</span>
+                                        <span class="payment-type">${payment.type || 'one_time'}</span>
+                                    </div>
+                                    <div class="payment-date">${date}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `}
+            </div>
         `;
     } catch (e) {
         console.error('Load user details error:', e);
         container.innerHTML = '<p class="breakdown-empty">Failed to load user details</p>';
+    }
+}
+
+function switchProfileTab(tab) {
+    document.querySelectorAll('.profile-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(tab));
+    });
+    document.querySelectorAll('.profile-tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    document.getElementById(`profile-tab-${tab}`)?.classList.remove('hidden');
+}
+
+function toggleGeneration(idx) {
+    const el = document.getElementById(`gen-openers-${idx}`);
+    if (el) {
+        el.classList.toggle('hidden');
     }
 }
 
