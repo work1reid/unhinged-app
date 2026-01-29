@@ -101,6 +101,111 @@ async function signInWithGoogle() {
     }
 }
 
+// ===================
+// EMAIL AUTH
+// ===================
+let isSignUpMode = false;
+
+function showEmailAuth() {
+    isSignUpMode = false;
+    updateEmailAuthUI();
+    document.getElementById('email-auth-modal').classList.remove('hidden');
+    document.getElementById('auth-email').focus();
+}
+
+function closeEmailAuth() {
+    document.getElementById('email-auth-modal').classList.add('hidden');
+    document.getElementById('email-auth-form').reset();
+    document.getElementById('auth-error').classList.add('hidden');
+}
+
+function toggleAuthMode(e) {
+    e.preventDefault();
+    isSignUpMode = !isSignUpMode;
+    updateEmailAuthUI();
+    document.getElementById('auth-error').classList.add('hidden');
+}
+
+function updateEmailAuthUI() {
+    const title = document.getElementById('email-auth-title');
+    const submitBtn = document.getElementById('email-auth-submit');
+    const toggleText = document.getElementById('auth-toggle-text');
+    const toggleLink = document.getElementById('auth-toggle-link');
+    const confirmGroup = document.getElementById('confirm-password-group');
+
+    if (isSignUpMode) {
+        title.textContent = 'Create Account';
+        submitBtn.textContent = 'Sign Up';
+        toggleText.textContent = 'Already have an account?';
+        toggleLink.textContent = 'Sign In';
+        confirmGroup.classList.remove('hidden');
+        document.getElementById('auth-confirm-password').required = true;
+    } else {
+        title.textContent = 'Sign In';
+        submitBtn.textContent = 'Sign In';
+        toggleText.textContent = "Don't have an account?";
+        toggleLink.textContent = 'Sign Up';
+        confirmGroup.classList.add('hidden');
+        document.getElementById('auth-confirm-password').required = false;
+    }
+}
+
+async function handleEmailAuth(e) {
+    e.preventDefault();
+    if (!supabaseClient) return;
+
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errorEl = document.getElementById('auth-error');
+
+    errorEl.classList.add('hidden');
+
+    if (isSignUpMode) {
+        const confirmPassword = document.getElementById('auth-confirm-password').value;
+        if (password !== confirmPassword) {
+            errorEl.textContent = 'Passwords do not match';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: { emailRedirectTo: 'https://unhingedai.app' }
+            });
+
+            if (error) throw error;
+
+            if (data.user && !data.user.confirmed_at) {
+                closeEmailAuth();
+                showToast('Check your email to confirm your account!');
+            } else {
+                closeEmailAuth();
+                showToast('Account created!');
+            }
+        } catch (error) {
+            errorEl.textContent = error.message;
+            errorEl.classList.remove('hidden');
+        }
+    } else {
+        try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            closeEmailAuth();
+            showToast('Signed in!');
+        } catch (error) {
+            errorEl.textContent = error.message;
+            errorEl.classList.remove('hidden');
+        }
+    }
+}
+
 async function signOut() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
@@ -258,7 +363,7 @@ async function addCredits(amount) {
     return false;
 }
 
-const SIGNUP_BONUS_CREDITS = 1;
+const SIGNUP_BONUS_CREDITS = 5;
 const WEEKLY_BONUS_CREDITS = 0; // Disabled - was bleeding money
 
 async function giveSignupBonus() {
@@ -737,12 +842,13 @@ function closeAnalytics() {
 
 async function loadAnalytics() {
     const container = document.getElementById('analytics-content');
-    container.innerHTML = '<div class="analytics-loading">Loading stats...</div>';
 
     if (!currentUser || !supabaseClient) {
-        container.innerHTML = '<p>Sign in to see analytics</p>';
+        container.innerHTML = '<p class="analytics-empty">Sign in to see analytics</p>';
         return;
     }
+
+    container.innerHTML = '<div class="analytics-loading">Loading stats...</div>';
 
     try {
         // Get all generations with feedback
@@ -925,12 +1031,13 @@ async function showGeneratedBreakdown() {
     const modal = document.getElementById('generated-breakdown-modal');
     const container = document.getElementById('generated-breakdown-content');
     modal.classList.remove('hidden');
-    container.innerHTML = '<div class="analytics-loading">Loading...</div>';
 
     if (!currentUser || !supabaseClient) {
-        container.innerHTML = '<p>Sign in to see breakdown</p>';
+        container.innerHTML = '<p class="breakdown-empty">Sign in to see breakdown</p>';
         return;
     }
+
+    container.innerHTML = '<div class="analytics-loading">Loading...</div>';
 
     try {
         const { data: generations } = await supabaseClient
@@ -1007,12 +1114,13 @@ async function showSuccessBreakdown() {
     const modal = document.getElementById('success-breakdown-modal');
     const container = document.getElementById('success-breakdown-content');
     modal.classList.remove('hidden');
-    container.innerHTML = '<div class="analytics-loading">Loading...</div>';
 
     if (!currentUser || !supabaseClient) {
-        container.innerHTML = '<p>Sign in to see breakdown</p>';
+        container.innerHTML = '<p class="breakdown-empty">Sign in to see breakdown</p>';
         return;
     }
+
+    container.innerHTML = '<div class="analytics-loading">Loading...</div>';
 
     try {
         const { data: generations } = await supabaseClient
@@ -2116,6 +2224,17 @@ async function analyzeConvo() {
         return;
     }
 
+    // Show credit cost info once per account
+    if (!hasCreditCostInfoBeenShown()) {
+        pendingGenerationType = 'convo';
+        showCreditCostInfo();
+        return;
+    }
+
+    analyzeConvoAfterCreditInfo();
+}
+
+async function analyzeConvoAfterCreditInfo() {
     const goal = document.querySelector('input[name="convo-goal"]:checked').value;
     showLoading();
 
@@ -2510,6 +2629,55 @@ function cancelUnhingedMode() {
 }
 
 // ===================
+// CREDIT COST INFO (one-time popup)
+// ===================
+let creditCostInfoShown = false;
+
+function hasCreditCostInfoBeenShown() {
+    // Check localStorage first (for non-logged-in users or quick check)
+    if (localStorage.getItem('creditCostInfoShown') === 'true') {
+        creditCostInfoShown = true;
+        return true;
+    }
+    return creditCostInfoShown;
+}
+
+function showCreditCostInfo() {
+    document.getElementById('credit-cost-modal').classList.remove('hidden');
+}
+
+function acceptCreditCostInfo() {
+    creditCostInfoShown = true;
+    localStorage.setItem('creditCostInfoShown', 'true');
+    document.getElementById('credit-cost-modal').classList.add('hidden');
+    // Continue with the generation flow
+    continueAfterCreditInfo();
+}
+
+let pendingGenerationType = null; // 'openers' or 'convo'
+
+function continueAfterCreditInfo() {
+    if (pendingGenerationType === 'openers') {
+        checkUnhingedAndGenerate();
+    } else if (pendingGenerationType === 'convo') {
+        analyzeConvoAfterCreditInfo();
+    }
+    pendingGenerationType = null;
+}
+
+function checkUnhingedAndGenerate() {
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+
+    // Check if unhinged mode and disclaimer not accepted
+    if (mode === 'unhinged' && !unhingedDisclaimerAccepted) {
+        showUnhingedDisclaimer();
+        return;
+    }
+
+    generateOpenersAfterDisclaimer();
+}
+
+// ===================
 // GENERATE
 // ===================
 async function generateOpeners() {
@@ -2526,15 +2694,14 @@ async function generateOpeners() {
         return;
     }
 
-    const mode = document.querySelector('input[name="mode"]:checked').value;
-
-    // Check if unhinged mode and disclaimer not accepted
-    if (mode === 'unhinged' && !unhingedDisclaimerAccepted) {
-        showUnhingedDisclaimer();
+    // Show credit cost info once per account
+    if (!hasCreditCostInfoBeenShown()) {
+        pendingGenerationType = 'openers';
+        showCreditCostInfo();
         return;
     }
 
-    generateOpenersAfterDisclaimer();
+    checkUnhingedAndGenerate();
 }
 
 async function generateOpenersAfterDisclaimer() {
@@ -2714,6 +2881,7 @@ function showToast(msg) {
 function setupListeners() {
     // Login
     document.getElementById('google-signin-btn')?.addEventListener('click', signInWithGoogle);
+    document.getElementById('email-signin-btn')?.addEventListener('click', showEmailAuth);
 
     // Settings
     document.getElementById('settings-btn')?.addEventListener('click', showSettings);

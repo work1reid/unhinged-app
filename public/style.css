@@ -147,6 +147,102 @@ body {
     background: #f0f0f0;
 }
 
+.login-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 4px 0;
+}
+
+.login-divider::before,
+.login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.login-divider span {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+}
+
+.btn-email {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 16px 24px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 56px;
+}
+
+.btn-email:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.email-icon {
+    font-size: 18px;
+}
+
+/* Email Auth Modal */
+.email-auth-content {
+    text-align: center;
+}
+
+.email-auth-content .form-group {
+    margin-bottom: 12px;
+}
+
+.email-auth-content input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.email-auth-content input:focus {
+    border-color: #ff6b6b;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.email-auth-content input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.auth-error {
+    color: #ff6b6b;
+    font-size: 14px;
+    margin-bottom: 12px;
+    text-align: left;
+}
+
+.auth-toggle {
+    margin-top: 16px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-toggle a {
+    color: #ff6b6b;
+    text-decoration: none;
+    font-weight: 600;
+}
+
 .btn-skip {
     display: flex;
     align-items: center;
