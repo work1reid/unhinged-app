@@ -134,10 +134,6 @@
                     <span class="feature-title">Analytics</span>
                 </button>
 
-                <button class="feature-card admin-only hidden" id="admin-btn" onclick="showAdmin()">
-                    <span class="feature-icon">👑</span>
-                    <span class="feature-title">Admin</span>
-                </button>
             </div>
 
             <p class="home-disclaimer">For entertainment only. Don't be a creep.</p>
@@ -663,6 +659,11 @@
                         </label>
                     </div>
                 </div>
+
+                <!-- Admin Panel (admins only) -->
+                <button class="settings-admin-btn hidden" id="settings-admin-btn" onclick="closeSettings(); showAdmin();">
+                    <span>👑</span> Admin Panel
+                </button>
 
                 <!-- Sign In/Out -->
                 <button class="btn-signout" id="settings-signout-btn" style="display: none;">Sign Out</button>

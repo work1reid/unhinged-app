@@ -1764,6 +1764,28 @@ body {
     transform: translateX(18px);
 }
 
+/* Admin Button in Settings */
+.settings-admin-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.15));
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    color: #ffd700;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.settings-admin-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 165, 0, 0.25));
+}
+
 /* Sign In/Out Buttons */
 .btn-signout {
     width: 100%;

@@ -75,7 +75,7 @@ async function initSupabase() {
                 purchasedCredits = 0;
                 currentSubscription = null;
                 isAdmin = false;
-                document.getElementById('admin-btn')?.classList.add('hidden');
+                document.getElementById('settings-admin-btn')?.classList.add('hidden');
                 showLogin();
             }
 
@@ -2914,8 +2914,8 @@ async function checkAdminStatus() {
         adminRole = data.role;
         canManageAdmins = data.canManageAdmins;
 
-        // Show/hide admin button
-        const adminBtn = document.getElementById('admin-btn');
+        // Show/hide admin button in settings
+        const adminBtn = document.getElementById('settings-admin-btn');
         if (adminBtn) {
             adminBtn.classList.toggle('hidden', !isAdmin);
         }
@@ -3021,13 +3021,14 @@ async function loadActivity() {
         if (!response.ok) throw new Error('Failed to load activity');
 
         const data = await response.json();
+        const activity = data.activity || [];
 
-        if (data.activity.length === 0) {
+        if (activity.length === 0) {
             container.innerHTML = '<p class="breakdown-empty">No recent activity</p>';
             return;
         }
 
-        container.innerHTML = data.activity.map(item => {
+        container.innerHTML = activity.map(item => {
             const time = new Date(item.created_at).toLocaleString();
             if (item.type === 'generation') {
                 return `
@@ -3401,12 +3402,7 @@ async function loadAdminUsers() {
         if (!response.ok) throw new Error('Failed to load');
 
         const data = await response.json();
-        allUsers = data.users;
-
-        // Update stats
-        document.getElementById('admin-total-users').textContent = data.total;
-        const totalGens = allUsers.reduce((sum, u) => sum + u.generations, 0);
-        document.getElementById('admin-total-gens').textContent = totalGens;
+        allUsers = data.users || [];
 
         renderAdminUsers(allUsers);
     } catch (e) {
